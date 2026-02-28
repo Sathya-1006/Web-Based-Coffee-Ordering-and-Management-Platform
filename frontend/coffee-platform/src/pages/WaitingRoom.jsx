@@ -1,10 +1,11 @@
-import Header from '../components/Header';
-import Footer from '../components/Footer';
 
 const WaitingRoom = () => {
   return (
+
+    
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#FFF8F0' }}>
-      <Header />
+      
+      
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px' }}>
         <div style={{ fontSize: '60px' }}>⏳</div>
         <h2 style={{ color: '#4B2C20' }}>Registration Submitted!</h2>
@@ -20,7 +21,7 @@ const WaitingRoom = () => {
           Return Home
         </button>
       </div>
-      <Footer />
+      
     </div>
   );
 };

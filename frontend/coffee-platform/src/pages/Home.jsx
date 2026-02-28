@@ -1,16 +1,34 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import emailjs from '@emailjs/browser';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 const Home = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const contactRef = useRef(null);
   const form = useRef();
   
+  
   // State for Email status
   const [status, setStatus] = useState('');
+
+  const scrollToSection = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    } else if (id === 'home') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.replace('#', '');
+      setTimeout(() => scrollToSection(id), 100);
+    }
+  }, [location]);
 
   const sendEmail = (e) => {
     e.preventDefault();
@@ -36,7 +54,7 @@ const Home = () => {
     container: {
       display: 'flex',
       flexDirection: 'column',
-      backgroundColor: '#0F0F0F',
+      backgroundColor: '#4c3c34', // Deep Roast Brown
       width: '100%',
       overflowX: 'hidden',
     },
@@ -49,12 +67,12 @@ const Home = () => {
     },
     sidebar: {
       flex: '1.2',
-      backgroundColor: '#FDFCFB',
+      backgroundColor: '#ffffff', // Warm Linen
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
       padding: '0 60px',
-      color: '#1A1A1A',
+      color: '#4c3c34',
       textAlign: 'left',
       minWidth: '350px',
     },
@@ -62,7 +80,7 @@ const Home = () => {
       fontSize: '12px',
       textTransform: 'uppercase',
       letterSpacing: '4px',
-      color: '#D4AF37',
+      color: '#a27c5c', // Muted Caramel
       marginBottom: '20px',
       fontWeight: '700'
     },
@@ -71,15 +89,15 @@ const Home = () => {
       lineHeight: '1',
       marginBottom: '20px',
       fontFamily: "'Playfair Display', serif",
-      color: '#2D1B14',
+      color: '#5c4128', // Espresso Brown
     },
     subtitle: {
       fontSize: '1.1rem',
       maxWidth: '400px',
       marginBottom: '40px',
       lineHeight: '1.7',
-      color: '#6F4E37',
-      opacity: 0.9,
+      color: '#5c4128', 
+      opacity: 0.85,
     },
     imagePanel: {
       flex: '1',
@@ -92,10 +110,10 @@ const Home = () => {
       backgroundPosition: 'center',
       transition: 'flex 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
       cursor: 'pointer',
-      borderLeft: '1px solid rgba(255,255,255,0.1)'
+      borderLeft: '1px solid rgba(203, 188, 178, 0.2)'
     },
     panelLabel: {
-      color: 'white',
+      color: '#cbbcb2',
       fontSize: '14px',
       textTransform: 'uppercase',
       letterSpacing: '3px',
@@ -105,12 +123,12 @@ const Home = () => {
       position: 'absolute',
       top: '40px',
       right: '20px',
-      opacity: 0.8
+      opacity: 0.9
     },
     button: {
       padding: '18px 45px',
-      backgroundColor: '#1A1A1A',
-      color: 'white',
+      backgroundColor: '#5c4128', // Dark Coffee
+      color: '#d1b49c', // Latte
       border: 'none',
       borderRadius: '0px',
       cursor: 'pointer',
@@ -123,7 +141,7 @@ const Home = () => {
     },
     aboutSection: {
       padding: '120px 80px',
-      backgroundColor: '#0F0F0F',
+      backgroundColor: '#4c3c34', // Deep Roast Brown
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -134,14 +152,14 @@ const Home = () => {
       fontFamily: "'Playfair Display', serif",
       fontSize: '2.5rem',
       lineHeight: '1.2',
-      color: '#FFFFFF'
+      color: '#cbbcb2'
     },
     aboutSub: {
       flex: '1',
       fontSize: '1.1rem',
-      color: '#A1A1A1',
+      color: '#d1b49c',
       lineHeight: '1.8',
-      borderLeft: '2px solid #D4AF37',
+      borderLeft: '2px solid #a27c5c',
       paddingLeft: '30px'
     },
     roadmapStep: {
@@ -154,9 +172,10 @@ const Home = () => {
     roadmapLine: {
       height: '2px',
       flex: '1',
-      borderTop: '2px dashed rgba(212, 175, 55, 0.4)',
+      borderTop: '2px dashed #a27c5c',
       margin: '0 20px',
-      marginTop: '40px'
+      marginTop: '40px',
+      opacity: 0.4
     },
     contactContainer: {
       position: 'relative',
@@ -173,13 +192,13 @@ const Home = () => {
     contactOverlay: {
       position: 'absolute',
       top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(15, 15, 15, 0.7)',
+      backgroundColor: 'rgba(76, 60, 52, 0.8)', // Deep Roast Overlay
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
     },
     contactCard: {
-      backgroundColor: '#FFFFFF',
+      backgroundColor: '#cbbcb2', // Warm Linen Card
       width: '100%',
       maxWidth: '900px',
       display: 'flex',
@@ -191,18 +210,19 @@ const Home = () => {
     contactFormLeft: {
       flex: 1,
       padding: '60px',
-      borderRight: '1px solid #EEEEEE',
+      borderRight: '1px solid #d1b49c',
     },
     contactFormRight: {
       flex: 1.2,
       padding: '60px',
       display: 'flex',
       flexDirection: 'column',
+      backgroundColor: '#caa383', // Slightly darker section for contrast
     },
     contactTitle: {
       fontFamily: "'Playfair Display', serif",
       fontSize: '2.5rem',
-      color: '#1A1A1A',
+      color: '#5c4128',
       marginBottom: '40px',
     },
     inputGroup: {
@@ -211,47 +231,48 @@ const Home = () => {
     inputLabel: {
       display: 'block',
       fontSize: '12px',
-      color: '#999999',
+      color: '#5c4128',
       marginBottom: '8px',
       textTransform: 'uppercase',
-      letterSpacing: '1px'
+      letterSpacing: '1px',
+      fontWeight: '600'
     },
     contactInput: {
       width: '100%',
       padding: '10px 0',
       border: 'none',
-      borderBottom: '1px solid #CCCCCC',
+      backgroundColor: 'transparent',
+      borderBottom: '1px solid #a27c5c',
       fontSize: '16px',
-      color: '#333333',
+      color: '#4c3c34',
       outline: 'none',
-      transition: 'border-color 0.3s',
     },
     contactTextarea: {
       width: '100%',
       height: '200px',
       border: 'none',
+      backgroundColor: 'transparent',
       fontSize: '16px',
-      color: '#333333',
+      color: '#4c3c34',
       resize: 'none',
       outline: 'none',
       paddingTop: '10px'
     },
     submitBtn: {
       padding: '12px 40px',
-      backgroundColor: '#D4AF37',
-      color: '#FFFFFF',
+      backgroundColor: '#5c4128', // Espresso
+      color: '#ffffff', // Linen
       border: 'none',
       borderRadius: '2px',
       cursor: 'pointer',
       fontWeight: 'bold',
       letterSpacing: '2px',
-      transition: 'background-color 0.3s',
+      transition: '0.3s',
     },
   };
-
   return (
-    <div style={styles.container}>
-      <Header />
+    <div style={styles.container} id="home">
+      <Header onNavClick={scrollToSection} />
       
       <main style={styles.mainContent}>
         <section style={styles.sidebar}>
@@ -372,7 +393,7 @@ const Home = () => {
         </div>
       </section>
 
-      <Footer />
+      <Footer onNavClick={scrollToSection} />
     </div>
   );
 };

@@ -14,6 +14,8 @@ import SetPassword from './pages/SetPassword'; // Added missing import
 import CafeSignup from './pages/CafeSignup';     // Added missing import
 
 import Admin from './pages/Admin';
+import CustomerProfile from './pages/CustomerProfile';
+import CafeOwnerProfile from './pages/CafeOwnerProfile';
 
 // Components
 import SignupChoice from './components/SignupChoice'; 
@@ -39,6 +41,12 @@ function App() {
         {/* Admin */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin-portal" element={<Admin />} />
+
+        {/*Customer Profile*/}
+        <Route path="/home" element={<Home />} />
+        <Route path="/customer-profile" element={<CustomerProfile />} />
+        <Route path="/owner-profile" element={<CafeOwnerProfile />} />
+        
       </Routes>
     </Router>
   );

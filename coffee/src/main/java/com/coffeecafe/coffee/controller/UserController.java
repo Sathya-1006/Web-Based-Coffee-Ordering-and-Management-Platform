@@ -1,6 +1,5 @@
 package com.coffeecafe.coffee.controller;
 
-// CRITICAL: These imports resolve all the red text in your screenshots
 import com.coffeecafe.coffee.dto.ApiResponse;
 import com.coffeecafe.coffee.dto.LoginRequest;
 import com.coffeecafe.coffee.dto.RegisterRequest;
@@ -13,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.GetMapping;
+import com.coffeecafe.coffee.service.EmailService;
 
 import java.util.List;
 import java.util.Map;
@@ -25,7 +25,9 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    // Fixes registration errors shown in image_3d7423.png
+    @Autowired
+    private EmailService emailService;
+
     @PostMapping(value = "/register", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
     public ResponseEntity<?> registerUser(
             @RequestPart("userData") String userDataJson,
@@ -34,7 +36,7 @@ public class UserController {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
 
-            // ADD THIS LINE: This tells Jackson how to handle Java 8 Dates (LocalDate)
+            // This tells Jackson how to handle Java 8 Dates (LocalDate)
             objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
 
             RegisterRequest request = objectMapper.readValue(userDataJson, RegisterRequest.class);
@@ -47,7 +49,7 @@ public class UserController {
         }
     }
 
-    // Fixes login errors shown in image_3d785d.png
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         User user = userService.loginUser(loginRequest.getEmail(), loginRequest.getPassword());
@@ -65,6 +67,14 @@ public class UserController {
         String newPassword = payload.get("password");
         userService.updatePasswordAndActivate(email, newPassword);
         return new ApiResponse("Password updated successfully");
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestParam String email) {
+        // 1. Ideally check if the user exists first
+        // 2. If exists, send email
+        emailService.sendResetLink(email);
+        return ResponseEntity.ok("Reset link sent successfully");
     }
 
 

@@ -1,132 +1,117 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-const Header = () => {
+const Header = ({ onNavClick }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    } else {
+      setUser(null);
+    }
+  }, [location]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    navigate('/');
+  };
+
+  const handleLinkClick = (e, sectionId) => {
+    e.preventDefault();
+    if (window.location.pathname === '/' || window.location.pathname === '/home') {
+      if (onNavClick) onNavClick(sectionId);
+    } else {
+      navigate(`/#${sectionId}`);
+    }
+  };
 
   const styles = {
     header: {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: '0 60px',
-      height: '80px', // Slimmer, elegant height
-      backgroundColor: 'rgba(15, 15, 15, 0.85)', // Premium Onyx with transparency
-      backdropFilter: 'blur(15px)', // High-end frosted glass effect
-      color: '#FFFFFF',
+      padding: '0 40px',
+      height: '80px',
+      backgroundColor: '#111111', // Fixed dark coffee background
+      borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
       position: 'fixed',
-      top: 0,
       width: '100%',
+      top: 0,
       zIndex: 2000,
-      boxSizing: 'border-box',
-      borderBottom: '1px solid rgba(212, 175, 55, 0.2)', // Thin gold divider
+      boxSizing: 'border-box'
     },
-    logoContainer: {
-      display: 'flex',
-      alignItems: 'center',
-      cursor: 'pointer',
-      gap: '10px'
-    },
-    logoText: {
-      fontSize: '22px',
-      fontWeight: '800',
-      fontFamily: "'Playfair Display', serif",
-      letterSpacing: '0.5px',
-      color: '#FFFFFF'
-    },
-    navLinks: {
-      display: 'flex',
-      gap: '35px', // Spacious navigation as seen in reference
-      alignItems: 'center',
-    },
+    logoContainer: { display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '10px' },
+    logoText: { fontSize: '22px', fontWeight: '800', fontFamily: "'Playfair Display', serif", color: '#FFFFFF' },
+    navLinks: { display: 'flex', gap: '30px', alignItems: 'center' },
     navItem: {
       fontSize: '14px',
       fontWeight: '500',
-      color: '#E2D1C3', // Champagne Cream
+      color: '#E2D1C3',
       cursor: 'pointer',
       textDecoration: 'none',
-      transition: 'color 0.3s ease',
+      textTransform: 'uppercase',
       letterSpacing: '0.5px'
     },
-    btnContainer: { 
-      display: 'flex', 
-      gap: '12px', 
-      alignItems: 'center' 
-    },
+    btnContainer: { display: 'flex', gap: '15px', alignItems: 'center' },
     loginBtn: {
-      padding: '10px 24px',
+      padding: '10px 20px',
       backgroundColor: 'transparent',
       color: '#FFFFFF',
       border: 'none',
       cursor: 'pointer',
-      fontWeight: '600',
-      fontSize: '14px',
-      transition: 'opacity 0.3s'
+      fontWeight: '600'
     },
-    actionBtn: {
-      padding: '10px 28px',
-      // Gradient matching the luxury theme
-      background: 'linear-gradient(135deg, #D4AF37 0%, #B8860B 100%)', 
+    signupBtn: {
+      padding: '10px 25px',
+      background: 'linear-gradient(135deg, #D4AF37 0%, #B8860B 100%)',
       color: '#000000',
       border: 'none',
-      borderRadius: '50px', // Perfect pill shape from reference
+      borderRadius: '50px',
       cursor: 'pointer',
       fontWeight: '700',
       fontSize: '13px',
       textTransform: 'uppercase',
-      letterSpacing: '1px',
-      boxShadow: '0 4px 15px rgba(212, 175, 55, 0.3)',
-      transition: 'transform 0.2s ease'
+      whiteSpace: 'nowrap'
     }
   };
 
   return (
     <header style={styles.header}>
-      {/* Brand Logo */}
       <div style={styles.logoContainer} onClick={() => navigate('/')}>
         <span style={{fontSize: '24px'}}>☕</span>
         <span style={styles.logoText}>Bookafé</span>
       </div>
 
-      {/* Navigation Links - Per your request */}
       <nav style={styles.navLinks}>
-        <span style={styles.navItem} onClick={() => navigate('/')}>Home</span>
-        <span style={styles.navItem}>About Us</span>
-        <span style={styles.navItem}>How It Works</span>
-        <span style={styles.navItem}>Contact Us</span>
+        {['home', 'about', 'how-it-works', 'contact'].map((id) => (
+          <a key={id} href={`#${id}`} style={styles.navItem} onClick={(e) => handleLinkClick(e, id)}>
+            {id.replace(/-/g, ' ')}
+          </a>
+        ))}
       </nav>
 
-      {/* Action Buttons */}
       <div style={styles.btnContainer}>
-        <button 
-          style={styles.loginBtn} 
-          onClick={() => navigate('/login')}
-          onMouseOver={(e) => e.target.style.opacity = '0.7'}
-          onMouseOut={(e) => e.target.style.opacity = '1'}
-        >
-          Login
-        </button>
-        <button 
-          style={styles.actionBtn}
-          onClick={() => navigate('/signup')}
-          onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
-          onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
-        >
-          Sign Up
-        </button>
+        {user ? (
+          <>
+            <span style={{color: '#D4AF37', fontWeight: 'bold', cursor: 'pointer'}} onClick={() => navigate('/customer-profile')}>
+              Hi, {user.firstName}!
+            </span>
+            <button style={styles.loginBtn} onClick={handleLogout}>Logout</button>
+          </>
+        ) : (
+          <>
+            <button style={styles.loginBtn} onClick={() => navigate('/login')}>Login</button>
+            <button style={styles.signupBtn} onClick={() => navigate('/signup')}>Sign Up</button>
+          </>
+        )}
       </div>
     </header>
   );
-};
-
-const handleScroll = (id) => {
-  const element = document.getElementById(id);
-  if (element) {
-    window.scrollTo({
-      top: element.offsetTop - 80, // Accounts for your fixed header height
-      behavior: 'smooth'
-    });
-  }
 };
 
 export default Header;
