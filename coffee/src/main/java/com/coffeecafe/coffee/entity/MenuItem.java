@@ -2,6 +2,7 @@ package com.coffeecafe.coffee.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import java.util.List;
 
 @Entity
 @Data
@@ -14,9 +15,15 @@ public class MenuItem {
     private String itemName;
     private Double price;
     private String description;
-    private Long cafeId;
+    private String category;
 
-    @Lob
-    @Column(columnDefinition = "LONGTEXT")
-    private String photo; // Stores the Base64 image string
+    @ManyToOne
+    @JoinColumn(name = "cafe_id")
+    private Cafe cafe;
+
+    // ---MULTIPLE IMAGES ---
+    @ElementCollection
+    @CollectionTable(name = "menu_item_photos", joinColumns = @JoinColumn(name = "menu_item_id"))
+    @Column(name = "photo", columnDefinition = "LONGTEXT")
+    private List<String> photos;
 }

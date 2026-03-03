@@ -22,9 +22,11 @@ public class CafeController {
     @PostMapping("/register")
     public ResponseEntity<?> registerCafe(@RequestBody Cafe cafe) {
         try {
+            cafe.setId(null);
             Cafe savedCafe = cafeRepository.save(cafe);
             return ResponseEntity.ok(savedCafe);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
     }
@@ -41,7 +43,7 @@ public class CafeController {
         return cafeRepository.findById(id).map(cafe -> {
             cafe.setCafeName(cafeDetails.getCafeName());
             cafe.setOwnerName(cafeDetails.getOwnerName());
-            // ... set other fields similarly
+            cafe.setCafeImages(cafeDetails.getCafeImages());
             return ResponseEntity.ok(cafeRepository.save(cafe));
         }).orElse(ResponseEntity.notFound().build());
     }
@@ -84,17 +86,12 @@ public class CafeController {
         return tableRepository.findAll();
     }
 
-
-
-
-    // Keep this for tables
     @DeleteMapping("/tables/delete/{id}")
     public ResponseEntity<?> deleteTable(@PathVariable Long id) {
         tableRepository.deleteById(id);
         return ResponseEntity.ok().build();
     }
 
-    // Keep ONLY ONE of these for cafes
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<?> deleteCafe(@PathVariable Long id) {
         try {

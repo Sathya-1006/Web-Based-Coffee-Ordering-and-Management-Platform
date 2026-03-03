@@ -1,30 +1,30 @@
 package com.coffeecafe.coffee.controller;
 
 import com.coffeecafe.coffee.entity.Order;
-import com.coffeecafe.coffee.repository.OrderRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.coffeecafe.coffee.service.OrderService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
 @CrossOrigin(origins = "http://localhost:3000")
+@RequiredArgsConstructor
 public class OrderController {
 
-    @Autowired
-    private OrderRepository orderRepository;
+    private final OrderService orderService;
 
     @PostMapping("/place")
     public Order placeOrder(@RequestBody Order order) {
-        order.setOrderDate(LocalDateTime.now());
-        order.setStatus("Success");
-        return orderRepository.save(order);
+        return orderService.saveOrder(order);
     }
 
     @GetMapping("/customer/{customerId}")
-    public List<Order> getCustomerOrders(@PathVariable Long customerId) {
-        return orderRepository.findByCustomerId(customerId);
+    public Page<Order> getOrderHistory(
+            @PathVariable Long customerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        return orderService.getHistory(customerId, page, size);
     }
 }

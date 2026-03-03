@@ -154,12 +154,12 @@ const AdminDashboard = () => {
                 </>
               )}
 
-              <button 
-                onClick={() => viewDocument(selectedUser.govtProofPath)}
-                style={{ width: '100%', padding: '10px', backgroundColor: '#A67B5B', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', marginBottom: '10px' }}
-              >
-                Open Government ID Proof
-              </button>
+                <button 
+                  onClick={() => viewDocument(selectedUser.govtProofPath)}
+                  style={{ width: '100%', padding: '10px', backgroundColor: '#A67B5B', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', marginBottom: '10px' }}
+                >
+                  Open Government ID Proof
+                </button>
               
               <button onClick={() => setSelectedUser(null)} style={{ width: '100%', background: 'none', border: '1px solid #ccc', padding: '8px', borderRadius: '5px' }}>Close</button>
             </div>

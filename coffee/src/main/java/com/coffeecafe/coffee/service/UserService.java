@@ -33,43 +33,61 @@ public class UserService {
      * Handles User Registration with Multi-step data and File Upload
      */
     public void registerUser(RegisterRequest request, MultipartFile govtProof) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already registered");
-        }
-
         User user = new User();
+
+        // Step 1: Personal
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
-        user.setDob(request.getDob());
-        user.setGender(request.getGender());
-        user.setRole(request.getRole());
         user.setEmail(request.getEmail());
         user.setPhoneNumber(request.getPhoneNumber());
-        user.setWorkExperience(request.getWorkExperience());
-        user.setStreet(request.getStreet());
-        user.setPlotNo(request.getPlotNo());
-        user.setCity(request.getCity());
-        user.setPincode(request.getPincode());
-        user.setAcademicHistory(request.getAcademicHistory());
-
-        // Set initial state
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setGender(request.getGender());
+        user.setDob(request.getDob());
+        user.setRole(request.getRole());
+        user.setPassword(passwordEncoder.encode(request.getPassword())); // ENCODE IT HERE
         user.setStatus("PENDING");
 
-        // Handle File Upload for Govt ID
+        // Step 2: Address
+        user.setPlotNo(request.getPlotNo());
+        user.setArea(request.getArea());
+        user.setCity(request.getCity());
+        user.setPincode(request.getPincode());
+
+        // Step 3: Academic
+        user.setInstitution(request.getInstitution());
+        user.setDegree(request.getDegree());
+        user.setPassingYear(request.getYear());
+
+        // Step 4: Work Experience
+        user.setJobTitle(request.getJobTitle());
+        user.setCompanyName(request.getCompanyName());
+        user.setEmploymentType(request.getEmploymentType());
+        user.setTotalYears(request.getTotalYears());
+        user.setStartDate(request.getStartDate());
+        user.setEndDate(request.getEndDate());
+        user.setCurrentlyWorking(request.isCurrentlyWorking());
+        user.setResponsibilities(request.getResponsibilities());
+        user.setAchievements(request.getAchievements());
+
+        // Handle File Upload for Govt Proof
+        // Inside registerUser method in UserService.java
         if (govtProof != null && !govtProof.isEmpty()) {
             try {
+                // Change this to match your React URL path
                 String uploadDir = "uploads/proofs/";
                 Path uploadPath = Paths.get(uploadDir);
+
                 if (!Files.exists(uploadPath)) {
                     Files.createDirectories(uploadPath);
                 }
-                String fileName = UUID.randomUUID().toString() + "_" + govtProof.getOriginalFilename();
+
+                String fileName = System.currentTimeMillis() + "_" + govtProof.getOriginalFilename();
                 Path filePath = uploadPath.resolve(fileName);
+
                 Files.copy(govtProof.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
                 user.setGovtProofPath(fileName);
             } catch (Exception e) {
-                throw new RuntimeException("File storage failed: " + e.getMessage());
+                throw new RuntimeException("Could not store file", e);
             }
         }
 

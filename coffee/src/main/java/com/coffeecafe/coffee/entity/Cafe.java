@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Data
@@ -31,14 +33,14 @@ public class Cafe {
     private String fssaiLicenseNumber;
     private String gstNumber;
 
-    // Media (Storing as Strings for URLs/Base64)
-    @Lob
-    private String cafeImage;
+    // Media
+    @ElementCollection
+    @CollectionTable(name = "cafe_images", joinColumns = @JoinColumn(name = "cafe_id"))
+    @Column(name = "image_data", columnDefinition = "LONGTEXT")
+    private List<String> cafeImages = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
 }

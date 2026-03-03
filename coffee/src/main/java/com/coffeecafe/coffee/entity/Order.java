@@ -1,13 +1,15 @@
 package com.coffeecafe.coffee.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import java.time.LocalDateTime;
+import lombok.*;
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Entity
-@Data
 @Table(name = "customer_orders")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -15,16 +17,20 @@ public class Order {
 
     private Long customerId;
     private String customerName;
-    private Long cafeId;
     private String cafeName;
-
     private Double totalAmount;
-    private String orderType; // "Dine-In", "Takeaway", "Home Delivery"
-    private String status;    // "Pending", "Success", "Cancelled"
-
-    private String tableNumber; // Only for Dine-In
+    private String orderType;
+    private String tableNumber;
+    private String paymentMethod;
     private LocalDateTime orderDate;
 
-    @ElementCollection
-    private List<String> items; // Simple list of item names ordered
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "order_items", joinColumns = @JoinColumn(name = "order_id"))
+    @Column(name = "items")
+    private List<String> items;
+
+    @PrePersist
+    protected void onCreate() {
+        this.orderDate = LocalDateTime.now();
+    }
 }

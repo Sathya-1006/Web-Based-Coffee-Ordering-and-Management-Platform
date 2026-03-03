@@ -2,59 +2,54 @@ package com.coffeecafe.coffee.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import java.time.LocalDate;
 
 @Entity
 @Data
-@Table(name = "users")
-public class User {
-
+public class StaffProfile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Step 1: Personal & Account
     private String firstName;
     private String lastName;
-    private LocalDate dob;
-    private String gender;
-    private String role;
     private String email;
+    private String gender;
+    private String dob;
     private String password;
 
-    @Column(name = "phone_number", nullable = false)
-    private String phoneNumber;
-    private String status;
+    // Link to the User (Account)
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
-    // Step 2: Address Details
+    // Link to the Cafe (The "Belongs To" Relationship)
+    @ManyToOne
+    @JoinColumn(name = "cafe_id")
+    private Cafe cafe;
+
+    // Step 1 & 2: Personal & Address
+    private String phone;
     private String plotNo;
     private String area;
     private String city;
     private String pincode;
 
-    // Step 3: Academic Details
+    // Step 3: Academic
     private String institution;
     private String degree;
     private String passingYear;
-    private String govtProofPath;
+    private String govtProofPath; // Stores the file path of the uploaded ID
 
-    // Step 4: Work Experience Details
+    // Step 4: Work Experience
     private String jobTitle;
     private String companyName;
     private String employmentType;
-    private String totalYears;
     private String startDate;
     private String endDate;
     private boolean currentlyWorking;
-
     @Column(columnDefinition = "TEXT")
     private String responsibilities;
-
     @Column(columnDefinition = "TEXT")
     private String achievements;
-
-    // The Cafe Connection
-    @ManyToOne
-    @JoinColumn(name = "cafe_id")
-    private Cafe cafe;
+    private String totalYearsOfExperience;
 }

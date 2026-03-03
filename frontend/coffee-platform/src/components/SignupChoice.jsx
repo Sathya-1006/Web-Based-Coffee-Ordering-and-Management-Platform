@@ -54,15 +54,15 @@ const SignupChoice = () => {
         },
         card: {
             backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-            width: '350px', // Increased width
-            height: '450px', // Increased height
-            padding: '0', // Set to 0 to allow image to hit edges if desired, or keep for padding
+            width: '350px', 
+            height: '450px', 
+            padding: '0',
             borderRadius: '25px', 
             textAlign: 'center',
             boxShadow: '0 20px 40px rgba(75, 44, 32, 0.15)', 
             cursor: 'pointer', 
             transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-            overflow: 'hidden', // Keeps images within rounded corners
+            overflow: 'hidden', 
             display: 'flex',
             flexDirection: 'column',
             border: '1px solid rgba(255, 255, 255, 0.3)'

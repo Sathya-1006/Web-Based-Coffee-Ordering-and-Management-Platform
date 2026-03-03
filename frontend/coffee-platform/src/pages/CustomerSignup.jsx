@@ -14,57 +14,51 @@ const CustomerSignup = () => {
         email: '', 
         role: 'Customer',
         password: '',
-        street: '',
         plotNo: '',
+        area: '', 
         city: '',
         pincode: '',
-        workExperience: '',
-        academicHistory: [{ institution: '', degree: '', yearOfPassing: '' }],
+        institution: '', 
+        degree: '',
+        yearOfPassing: '',
+        // --- Added Work Experience Fields ---
+        jobTitle: '', 
+        companyName: '',
+        totalYears: '',
+        startDate: '',
+        endDate: '',
+        currentlyWorking: false,
+        responsibilities: '',
+        achievements: 'N/A',
+        // ------------------------------------
         govtProof: null
     });
 
-    // --- Helper Functions ---
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ 
+            ...prev, 
+            [name]: type === 'checkbox' ? checked : value 
+        }));
     };
 
-    const addAcademic = () => {
-        setFormData({
-            ...formData,
-            academicHistory: [...formData.academicHistory, { institution: '', degree: '', yearOfPassing: '' }]
-        });
-    };
-
-    const handleAcademicChange = (index, field, value) => {
-        const updated = [...formData.academicHistory];
-        updated[index][field] = value;
-        setFormData({ ...formData, academicHistory: updated });
-    };
-
-    const removeAcademic = (index) => {
-        if (formData.academicHistory.length > 1) {
-            const updated = formData.academicHistory.filter((_, i) => i !== index);
-            setFormData({ ...formData, academicHistory: updated });
-        }
-    };
-
-    // --- Validation Logic ---
     const isStepValid = () => {
         if (step === 1) {
             return formData.firstName && formData.lastName && formData.dob &&
-                   formData.gender && formData.phoneNumber && formData.street &&
-                   formData.plotNo && formData.city && formData.pincode;
+                   formData.gender && formData.phoneNumber && formData.plotNo && 
+                   formData.area && formData.city && formData.pincode;
         }
         if (step === 2) {
-            return formData.academicHistory.every(edu =>
-                edu.institution && edu.degree && edu.yearOfPassing
-            );
+            return formData.institution && formData.degree && formData.yearOfPassing;
         }
         if (step === 3) {
             return formData.email && formData.password && formData.email.includes('@');
         }
         if (step === 4) {
+            // Step 4 is Work Experience - keeping it optional but checking mandatory fields if they started typing
+            return formData.jobTitle && formData.companyName;
+        }
+        if (step === 5) {
             return formData.govtProof !== null;
         }
         return false;
@@ -74,7 +68,7 @@ const CustomerSignup = () => {
         if (isStepValid()) {
             setStep(step + 1);
         } else {
-            alert("Please fill in all mandatory fields before proceeding.");
+            alert("Please fill in all mandatory fields.");
         }
     };
 
@@ -82,45 +76,55 @@ const CustomerSignup = () => {
         e.preventDefault();
         const data = new FormData();
 
-        const userBlob = JSON.stringify({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phoneNumber: formData.phoneNumber,
-            password: formData.password,
-            role: formData.role,
-            dob: formData.dob,
-            gender: formData.gender,
-            workExperience: formData.workExperience,
-            academicHistory: formData.academicHistory,
-            street: formData.street,
-            plotNo: formData.plotNo,
-            city: formData.city,
-            pincode: formData.pincode
-        });
+        // Step 1: Personal
+        data.append('firstName', formData.firstName);
+        data.append('lastName', formData.lastName);
+        data.append('email', formData.email);
+        data.append('password', formData.password);
+        data.append('role', formData.role);
+        data.append('gender', formData.gender);
+        data.append('dob', formData.dob);
+        data.append('phone', formData.phoneNumber);
 
-        data.append('userData', userBlob);
+        // Step 2: Address
+        data.append('plotNo', formData.plotNo);
+        data.append('area', formData.area);
+        data.append('city', formData.city);
+        data.append('pincode', formData.pincode);
 
-        if (formData.govtProof) {
-            data.append('govtProof', formData.govtProof);
-        }
+        // Step 3: Academic
+        data.append('institution', formData.institution);
+        data.append('degree', formData.degree);
+        data.append('year', formData.yearOfPassing);
+        data.append('govtProof', formData.govtProof);
+
+        // Step 4: Work (Now using dynamic values)
+        data.append('jobTitle', formData.jobTitle);
+        data.append('companyName', formData.companyName);
+        data.append('totalYears', formData.totalYears);
+        data.append('startDate', formData.startDate);
+        data.append('endDate', formData.endDate || '');
+        data.append('currentlyWorking', formData.currentlyWorking);
+        data.append('responsibilities', formData.responsibilities || 'N/A');
+        data.append('achievements', formData.achievements);
+
+        data.append('cafeId', 1); 
 
         try {
-            const response = await fetch('http://localhost:8080/users/register', {
+            const response = await fetch('http://localhost:8080/users/api/staff/register', {
                 method: 'POST',
                 body: data,
             });
 
             if (response.ok) {
-                // Requirement: Pop up message, wait for OK, then redirect
                 alert("Registration successful! Wait for admin approval.");
                 navigate('/waiting');
             } else {
-                const errorData = await response.json();
-                alert("Registration failed: " + JSON.stringify(errorData));
+                alert("Registration failed. Check if your backend is running.");
             }
         } catch (error) {
             console.error("Connection error:", error);
+            alert("Could not connect to server.");
         }
     };
 
@@ -128,8 +132,6 @@ const CustomerSignup = () => {
         main: { 
             backgroundImage: `linear-gradient(rgba(255, 248, 240, 0.85), rgba(255, 248, 240, 0.85)), url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2070&auto=format&fit=crop')`,
             backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundAttachment: 'fixed',
             minHeight: '100vh', 
             display: 'flex', 
             flexDirection: 'column',
@@ -139,165 +141,127 @@ const CustomerSignup = () => {
             padding: '40px 20px',
             position: 'relative'
         },
-        logo: {
+        formContainer: { 
+            maxWidth: '600px', 
+            width: '100%',
+            padding: '40px', 
+            backgroundColor: 'white',
+            borderRadius: '20px', 
+            boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+            position: 'relative' // For absolute cross symbol
+        },
+        cross: {
             position: 'absolute',
-            top: '30px',
-            left: '40px',
-            fontSize: '32px',
-            fontWeight: '800',
-            fontFamily: "'Playfair Display', serif",
+            top: '20px',
+            right: '25px',
+            fontSize: '24px',
+            fontWeight: 'bold',
             color: '#4B2C20',
             cursor: 'pointer',
-            letterSpacing: '1px',
-            zIndex: 10
-        },
-        formContainer: { 
-            maxWidth: '650px', 
-            width: '100%',
-            padding: '40px 50px', 
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '24px', 
-            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)', 
-            position: 'relative',
-            boxSizing: 'border-box'
+            transition: '0.3s'
         },
         input: { 
             width: '100%', 
-            padding: '14px 18px', 
-            margin: '10px 0', 
+            padding: '12px', 
+            margin: '8px 0', 
             border: '1px solid #DDD', 
-            borderRadius: '12px', 
-            fontSize: '15px',
-            boxSizing: 'border-box'
-        },
-        tableInput: { 
-            width: '100%', 
-            padding: '10px', 
-            border: '1px solid #E5E5E5', 
-            borderRadius: '8px',
-            fontSize: '14px',
+            borderRadius: '8px', 
             boxSizing: 'border-box'
         },
         btn: { 
-            padding: '15px 30px', 
+            padding: '14px', 
             backgroundColor: '#4B2C20', 
             color: 'white', 
             border: 'none', 
-            borderRadius: '12px', 
-            cursor: 'pointer', 
-            marginTop: '20px', 
-            fontWeight: '600',
-            fontSize: '16px',
-            width: '100%'
-        },
-        label: { 
-            fontSize: '14px', 
-            color: '#4B2C20', 
-            fontWeight: '600', 
-            display: 'block', 
-            marginTop: '18px',
-            marginBottom: '5px'
-        },
-        secondaryBtn: { 
-            padding: '8px 16px', 
-            backgroundColor: 'transparent', 
-            color: '#A67C52', 
-            border: '1.5px solid #A67C52', 
             borderRadius: '8px', 
             cursor: 'pointer', 
-            fontSize: '13px',
-            fontWeight: '600',
-            marginTop: '10px'
+            marginTop: '20px', 
+            width: '100%',
+            fontWeight: 'bold'
         }
     };
 
     return (
         <div style={styles.main}>
-            <div style={styles.logo} onClick={() => navigate('/')}>Bookafé</div>
             <div style={styles.formContainer}>
-                <div style={{textAlign: 'right', cursor: 'pointer', fontSize: '20px'}} onClick={() => navigate('/')}>✖</div>
-                <h2 style={{color: '#4B2C20', textAlign: 'center', marginBottom: '30px'}}>Step {step} of 4</h2>
+                {/* Cross Symbol to navigate back */}
+                <div style={styles.cross} onClick={() => navigate('/signup')}>✖</div>
+
+                <h2 style={{textAlign: 'center', color: '#4B2C20'}}>Customer Signup - Step {step}</h2>
 
                 {step === 1 && (
                     <div>
-                        <label style={styles.label}>Personal Information</label>
-                        <div style={{display: 'flex', gap: '10px'}}>
-                            <input style={styles.input} name="firstName" placeholder="First Name *" onChange={handleChange} value={formData.firstName} />
-                            <input style={styles.input} name="lastName" placeholder="Last Name *" onChange={handleChange} value={formData.lastName} />
-                        </div>
+                        <input style={styles.input} name="firstName" placeholder="First Name" onChange={handleChange} value={formData.firstName} />
+                        <input style={styles.input} name="lastName" placeholder="Last Name" onChange={handleChange} value={formData.lastName} />
                         <input style={styles.input} name="dob" type="date" onChange={handleChange} value={formData.dob} />
+                        <input style={styles.input} name="phoneNumber" placeholder="Phone" onChange={handleChange} value={formData.phoneNumber} />
+                        <input style={styles.input} name="plotNo" placeholder="Plot No" onChange={handleChange} value={formData.plotNo} />
+                        <input style={styles.input} name="area" placeholder="Area / Street" onChange={handleChange} value={formData.area} />
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <input style={styles.input} name="city" placeholder="City" onChange={handleChange} value={formData.city} />
+                            <input style={styles.input} name="pincode" placeholder="Pincode" onChange={handleChange} value={formData.pincode} />
+                        </div>
                         <select style={styles.input} name="gender" onChange={handleChange} value={formData.gender}>
-                            <option value="">Select Gender *</option>
+                            <option value="">Select Gender</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
                         </select>
-                        <input style={styles.input} name="phoneNumber" type="tel" placeholder="Phone Number *" onChange={handleChange} value={formData.phoneNumber} />
-                        <label style={styles.label}>Full Address</label>
-                        <div style={{display: 'flex', gap: '10px'}}>
-                            <input style={styles.input} name="plotNo" placeholder="Plot / Flat No *" onChange={handleChange} value={formData.plotNo} />
-                            <input style={styles.input} name="street" placeholder="Street / Area *" onChange={handleChange} value={formData.street} />
-                        </div>
-                        <div style={{display: 'flex', gap: '10px'}}>
-                            <input style={styles.input} name="city" placeholder="City *" onChange={handleChange} value={formData.city} />
-                            <input style={styles.input} name="pincode" placeholder="Pincode *" onChange={handleChange} value={formData.pincode} />
-                        </div>
-                        <button style={styles.btn} onClick={handleNext}>Next: Academic Details</button>
+                        <button style={styles.btn} onClick={handleNext}>Next: Education</button>
                     </div>
                 )}
 
                 {step === 2 && (
                     <div>
-                        <label style={styles.label}>Academic Information *</label>
-                        <table style={{width: '100%', borderCollapse: 'collapse', marginTop: '10px'}}>
-                            <thead>
-                                <tr style={{textAlign: 'left', fontSize: '13px', color: '#6F4E37'}}>
-                                    <th>Institution</th>
-                                    <th>Degree</th>
-                                    <th>Year</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {formData.academicHistory.map((edu, index) => (
-                                    <tr key={index}>
-                                        <td><input style={styles.tableInput} placeholder="School/Uni" value={edu.institution} onChange={(e) => handleAcademicChange(index, 'institution', e.target.value)} /></td>
-                                        <td><input style={styles.tableInput} placeholder="B.Tech/HSC" value={edu.degree} onChange={(e) => handleAcademicChange(index, 'degree', e.target.value)} /></td>
-                                        <td><input style={styles.tableInput} placeholder="2022" value={edu.yearOfPassing} onChange={(e) => handleAcademicChange(index, 'yearOfPassing', e.target.value)} /></td>
-                                        <td>{formData.academicHistory.length > 1 && <button onClick={() => removeAcademic(index)} style={{background:'none', border:'none', color:'red', cursor:'pointer'}}>✕</button>}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        <button style={styles.secondaryBtn} onClick={addAcademic}>+ Add Entry</button>
-                        <label style={{...styles.label, marginTop: '20px'}}>Work Experience (Optional)</label>
-                        <textarea style={{...styles.input, height: '80px', fontFamily: 'inherit'}} name="workExperience" placeholder="Briefly describe your past roles..." onChange={handleChange} value={formData.workExperience} />
-                        <div style={{display:'flex', gap:'10px'}}>
-                            <button style={{...styles.btn, flex:1, backgroundColor:'#D2B48C'}} onClick={() => setStep(1)}>Back</button>
-                            <button style={{...styles.btn, flex:1}} onClick={handleNext}>Next: Account Setup</button>
+                        <input style={styles.input} name="institution" placeholder="University/School" onChange={handleChange} value={formData.institution} />
+                        <input style={styles.input} name="degree" placeholder="Degree/Standard" onChange={handleChange} value={formData.degree} />
+                        <input style={styles.input} name="yearOfPassing" placeholder="Year of Passing" onChange={handleChange} value={formData.yearOfPassing} />
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <button style={{...styles.btn, backgroundColor: '#888'}} onClick={() => setStep(1)}>Back</button>
+                            <button style={styles.btn} onClick={handleNext}>Next: Account</button>
                         </div>
                     </div>
                 )}
 
                 {step === 3 && (
                     <div>
-                        <label style={styles.label}>Account Credentials</label>
-                        <input style={styles.input} name="email" type="email" placeholder="Email Address *" onChange={handleChange} value={formData.email} />
-                        <input style={styles.input} name="password" type="password" placeholder="Create Initial Password *" onChange={handleChange} value={formData.password} />
-                        <div style={{display:'flex', gap:'10px'}}>
-                            <button style={{...styles.btn, flex:1, backgroundColor:'#D2B48C'}} onClick={() => setStep(2)}>Back</button>
-                            <button style={{...styles.btn, flex:1}} onClick={handleNext}>Next: Verification</button>
+                        <input style={styles.input} name="email" placeholder="Email" onChange={handleChange} value={formData.email} />
+                        <input style={styles.input} name="password" type="password" placeholder="Password" onChange={handleChange} value={formData.password} />
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <button style={{...styles.btn, backgroundColor: '#888'}} onClick={() => setStep(2)}>Back</button>
+                            <button style={styles.btn} onClick={handleNext}>Next: Work Experience</button>
                         </div>
                     </div>
                 )}
 
+                {/* NEW STEP 4: WORK EXPERIENCE */}
                 {step === 4 && (
                     <div>
-                        <label style={styles.label}>Identity Verification *</label>
-                        <p style={{fontSize:'13px', color:'#666', marginBottom:'15px'}}>Upload a clear photo or PDF of your Government ID (Aadhar/PAN).</p>
-                        <input style={styles.input} type="file" accept="image/*,.pdf" onChange={(e) => setFormData({...formData, govtProof: e.target.files[0]})} />
-                        <div style={{display:'flex', gap:'10px', marginTop: '20px'}}>
-                            <button style={{...styles.btn, flex:1, backgroundColor:'#D2B48C'}} onClick={() => setStep(3)}>Back</button>
-                            <button style={{...styles.btn, flex:1}} onClick={handleSubmit}>Register & Submit</button>
+                        <input style={styles.input} name="jobTitle" placeholder="Job Title" onChange={handleChange} value={formData.jobTitle} />
+                        <input style={styles.input} name="companyName" placeholder="Company Name" onChange={handleChange} value={formData.companyName} />
+                        <input style={styles.input} name="totalYears" placeholder="Total Experience (Years)" onChange={handleChange} value={formData.totalYears} />
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <input style={styles.input} name="startDate" type="date" placeholder="Start Date" onChange={handleChange} value={formData.startDate} />
+                            <input style={styles.input} name="endDate" type="date" placeholder="End Date" onChange={handleChange} value={formData.endDate} disabled={formData.currentlyWorking} />
+                        </div>
+                        <div style={{margin: '10px 0'}}>
+                            <input type="checkbox" name="currentlyWorking" checked={formData.currentlyWorking} onChange={handleChange} />
+                            <label style={{marginLeft: '8px'}}>I currently work here</label>
+                        </div>
+                        <textarea style={{...styles.input, height: '60px'}} name="responsibilities" placeholder="Key Responsibilities" onChange={handleChange} value={formData.responsibilities} />
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <button style={{...styles.btn, backgroundColor: '#888'}} onClick={() => setStep(3)}>Back</button>
+                            <button style={styles.btn} onClick={handleNext}>Next: Verification</button>
+                        </div>
+                    </div>
+                )}
+
+                {step === 5 && (
+                    <div>
+                        <p>Upload Government ID (Aadhar/PAN)</p>
+                        <input style={styles.input} type="file" onChange={(e) => setFormData({...formData, govtProof: e.target.files[0]})} />
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <button style={{...styles.btn, backgroundColor: '#888'}} onClick={() => setStep(4)}>Back</button>
+                            <button style={styles.btn} onClick={handleSubmit}>Complete Registration</button>
                         </div>
                     </div>
                 )}

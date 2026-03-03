@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+import axios from 'axios';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement,
   Title, Tooltip, Legend, ArcElement,
@@ -15,10 +17,12 @@ import {
   LogOut,
   Coffee,
   ShoppingBag,
-  CalendarCheck
+  CalendarCheck,
+
 } from 'lucide-react';
 
 import { Pencil, Trash2, Plus } from 'lucide-react';
+import StaffSignup from './StaffSignup';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -26,35 +30,310 @@ const CafeOwnerProfile = () => {
   const navigate = useNavigate();
 
  // --- STATE ---
+  const [cafes, setCafes] = useState([]);
+
+  
+  const [view, setView] = React.useState('dashboard');
   const [activeSection, setActiveSection] = useState('dashboard');
-  const [cafeData, setCafeData] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
-  const [staffList, setStaffList] = useState([]);
   const [tables, setTables] = useState([]);
+  const [myCafes, setMyCafes] = useState([]);
+
+ //STAFF
+const [staffType, setStaffType] = useState(null);
+ 
+ // Menu state
+ const handleNextImage = (itemId) => {
+  setMenuItems(prev => prev.map(item => {
+    if (item.id === itemId) {
+      const total = item.photos.length;
+      const next = ((item.activeIndex || 0) + 1) % total;
+      return { ...item, activeIndex: next };
+    }
+    return item;
+  }));
+};
+
+const handlePrevImage = (itemId) => {
+  setMenuItems(prev => prev.map(item => {
+    if (item.id === itemId) {
+      const total = item.photos.length;
+      const prevIdx = ((item.activeIndex || 0) - 1 + total) % total;
+      return { ...item, activeIndex: prevIdx };
+    }
+    return item;
+  }));
+};
+
+const handleEditItem = (item) => {
+  console.log("Edit item:", item);
+  alert(`Editing ${item.itemName}`);
+};
+
+const handleDeleteItem = async (itemId) => {
+  if (window.confirm("Are you sure you want to delete this item?")) {
+    try {
+      const response = await fetch(`http://localhost:8080/api/menu/${itemId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        setMenuItems(prev => prev.filter(item => item.id !== itemId));
+      }
+    } catch (error) {
+      console.error("Error deleting item:", error);
+    }
+  }
+};
+
+const carouselArrowStyle = {
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  border: 'none',
+  borderRadius: '50%',
+  width: '28px',
+  height: '28px',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '18px',
+  color: '#4C3C34',
+  boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+  zIndex: 10
+};
+
+// Carousel Component for multiple images
+const SmoothScrollSlider = ({ images }) => {
+  const scrollRef = React.useRef(null);
+
+  if (!images || images.length === 0) {
+    return (
+      <div style={{ height: '100%', backgroundColor: '#fdfbf9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontSize: '30px' }}>☕</span>
+      </div>
+    );
+  }
+
+  const scroll = (direction) => {
+    if (scrollRef.current) {
+      const { scrollLeft, clientWidth } = scrollRef.current;
+      const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth;
+      scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <div className="slider-container" style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {/* Scrollable Area */}
+      <div 
+        ref={scrollRef}
+        className="no-scrollbar"
+        style={{ 
+          display: 'flex', 
+          overflowX: 'auto', 
+          scrollSnapType: 'x mandatory', 
+          height: '100%',
+          scrollbarWidth: 'none'
+        }}
+      >
+        {images.map((img, index) => (
+          <img 
+            key={index} 
+            src={img} 
+            alt="Slide" 
+            style={{ flex: '0 0 100%', width: '100%', height: '100%', objectFit: 'cover', scrollSnapAlign: 'start' }} 
+          />
+        ))}
+      </div>
+
+      {/* Nav Arrows - Positioned Absolutely inside the container */}
+      {images.length > 1 && (
+        <>
+          <button 
+            onClick={(e) => { e.stopPropagation(); scroll('left'); }}
+            style={{ ...navButtonStyle, left: '5px' }}
+            className="nav-button"
+          >
+            ❮
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); scroll('right'); }}
+            style={{ ...navButtonStyle, right: '5px' }}
+            className="nav-button"
+          >
+            ❯
+          </button>
+          
+          <div style={badgeStyle}>
+             {images.length} Photos
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+// Internal styles for the slider
+const navButtonStyle = {
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  background: 'rgba(0, 0, 0, 0.4)',
+  color: 'white',
+  border: 'none',
+  borderRadius: '50%',
+  width: '24px',
+  height: '24px',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '12px',
+  zIndex: 2,
+  opacity: 0.6,
+  transition: 'opacity 0.2s'
+};
+
+const badgeStyle = {
+  position: 'absolute',
+  bottom: '8px',
+  right: '8px',
+  backgroundColor: 'rgba(0,0,0,0.6)',
+  color: 'white',
+  padding: '2px 8px',
+  borderRadius: '10px',
+  fontSize: '10px',
+  fontWeight: 'bold'
+};
+
+ const handleSaveMenuItem = async (e) => {
+    e.preventDefault();
+    const cafeId = selectedCafe.id; 
+
+    try {
+        const response = await fetch(`http://localhost:8080/api/menu/add/${cafeId}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(menuItemData),
+        });
+
+        if (response.ok) {
+            alert("Item added successfully!");
+        }
+    } catch (error) {
+        console.error("Error saving menu item:", error);
+    }
+}; 
+
+// - Staff state-
+const [staffList, setStaffList] = useState([]);
+const [showStaffForm, setShowStaffForm] = useState(false);
+const [selectedRole, setSelectedRole] = useState("");
+const [showStaffList, setShowStaffList] = useState(false);
+const [staffCurrentPage, setStaffCurrentPage] = useState(1);
+const staffPerPage = 4;
 
   const [selectedCafe, setSelectedCafe] = useState(null);
-  const [myCafes, setMyCafes] = useState([]);
+
+  const handleRegisterCafe = async (cafeData) => {
+  try {
+    const response = await fetch('http://localhost:8080/api/cafes/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cafeData),
+    });
+
+    if (response.ok) {
+      const savedCafeFromDB = await response.json();
+    
+      setMyCafes(prev => [...prev, savedCafeFromDB]);
+
+      setSelectedCafe(savedCafeFromDB); 
+      
+      alert("Cafe Registered! ID: " + savedCafeFromDB.id);
+      setActiveSection('my-cafes');
+      
+      // 3. Reset the form and redirect
+      setRegForm({ cafeName: '', city: '', state: '', contactNumber: '', cafeImages: [] });
+    } else {
+      const errorMsg = await response.text();
+      alert("Registration failed: " + errorMsg);
+    }
+  } catch (error) {
+    console.error("Cafe registration error:", error);
+    alert("Network error: Could not connect to the server.");
+  }
+};
+
+
+  useEffect(() => {
+  const fetchStaff = async () => {
+    if (selectedCafe?.id && activeSection === 'staff') {
+      try {
+        const response = await fetch(`http://localhost:8080/api/staff/cafe/${selectedCafe.id}`);
+        const data = await response.json();
+        setStaffList(data);
+      } catch (err) {
+        console.error("Failed to fetch staff", err);
+      }
+    }
+  };
+  fetchStaff();
+}, [selectedCafe, activeSection]);
+
+ useEffect(() => {
+    if (cafes && cafes.length > 0 && !selectedCafe) {
+        setSelectedCafe(cafes[0]);
+    }
+}, [cafes, selectedCafe]);
   useEffect(() => {
   if (activeSection === 'my-cafes') {
     fetch('http://localhost:8080/api/cafes/all')
       .then(res => res.json())
-      .then(data => setMyCafes(data)) // [cite: 156]
+      .then(data => setMyCafes(data)) 
       .catch(err => console.error("Error fetching cafes:", err));
   }
 }, [activeSection]);
 
+// STAFF FORM TRIGGER
+  const openStaffOnboarding = () => {
+    if (!selectedCafe?.id) {
+       return alert("System Error: Cafe ID not found. Please register or select a cafe first.");
+    }
+    setShowStaffForm(true);
+  };
+const handleLogout = () => {
 
+  localStorage.removeItem('user'); 
+  window.location.href = 'http://localhost:5173/';
+};
 
 const [tableForm, setTableForm] = useState({ tableNumber: '', capacity: '', price: '' });
 
-// --- Consolidated Handle Add Table ---
-const handleAddTable = async (e) => {
-  if (e) e.preventDefault(); // Prevents page reload if called from a form submit
+// --- Handle Add Table ---
 
-  // Link the table to a specific cafe (assuming the owner has at least one cafe registered)
+const handleAddTable = async (e) => {
+  if (e) e.preventDefault();
+
+  if (!selectedCafe?.id) {
+    alert("Error: No cafe selected. Please select a cafe first.");
+    return;
+  }
   const tableData = {
-    ...newTable,
-    cafeId: myCafes[0]?.id // Dynamically links the table to the owner's cafe
+    tableNumber: newTable.tableNumber,
+    capacity: Number(newTable.capacity),
+    price: Number(newTable.price),
+    description: newTable.description,
+    amenities: newTable.amenities,
+    status: newTable.status || 'Available',
+    images: newTable.images,
+    cafe: { 
+      id: selectedCafe.id 
+    }
   };
 
   try {
@@ -65,20 +344,27 @@ const handleAddTable = async (e) => {
     });
 
     if (response.ok) {
-      alert("Table added to inventory successfully!");
-      // Reset form fields
-      setNewTable({ tableNumber: '', capacity: '', price: '', image: null });
-      // Close the entry card if you are using a toggle
-      if (typeof setShowTableForm === 'function') setShowTableForm(false);
-      // Trigger a fetch to refresh the list displayed on the screen
-      if (typeof fetchTables === 'function') fetchTables();
+      const savedTable = await response.json();
+      setTables(prev => [...prev, savedTable]);
+      
+      alert("Table added successfully!");
+      setNewTable({ 
+        tableNumber: '', 
+        capacity: '', 
+        price: '', 
+        description: '', 
+        amenities: '', 
+        status: 'Available', 
+        images: [] 
+      });
+      setShowTableForm(false);
     } else {
-      const errorMsg = await response.text();
-      alert("Failed to add table: " + errorMsg);
+      const msg = await response.text();
+      alert("Failed to add table: " + msg);
     }
-  } catch (error) {
-    console.error("Error saving table:", error);
-    alert("Network error: Could not connect to backend.");
+  } catch (err) {
+    console.error("Save error:", err);
+    alert("An error occurred while saving the table.");
   }
 };
 
@@ -92,7 +378,7 @@ const handleDelete = async (id) => {
 
       if (response.ok) {
         alert("Cafe removed successfully");
-        // Update local state to remove the item from UI immediately
+        
         setMyCafes(prev => prev.filter(cafe => cafe.id !== id));
       } else {
         alert("Failed to delete the cafe.");
@@ -106,12 +392,12 @@ const handleDelete = async (id) => {
 // --- 2. Handle Edit ---
 const handleEdit = (cafe) => {
   setRegForm(cafe);
-  setIsEditing(true); // Add this line
+  setIsEditing(true); 
   setActiveSection('register');
 };
 
 const handleNavigateToRegister = () => {
-  setIsEditing(false); // Add this line to ensure a fresh form
+  setIsEditing(false); 
   setRegForm({});      
   setActiveSection('register');
 };
@@ -126,26 +412,36 @@ const [newTable, setNewTable] = useState({
     price: '',
     description: '', 
     amenities: '', 
-    image: null
+    status: 'Available',
+    images: []
 });
 
   // 1. Fetch tables from DB when the section is active
   useEffect(() => {
-    if (activeSection === 'tables') {
-      fetchTables();
-    }
-  }, [activeSection]);
+  if (activeSection === 'tables' && selectedCafe?.id) {
+    fetchTables(selectedCafe.id);
+  }
+}, [activeSection, selectedCafe]);
 
-  const fetchTables = async () => {
-    try {
-      const res = await fetch('http://localhost:8080/api/cafes/tables/all');
-      const data = await res.json();
+  const fetchTables = async (cafeId) => {
+  if (!cafeId) return; 
+
+  try {
+    const response = await fetch(`http://localhost:8080/api/cafes/tables/${cafeId}`);
+    const data = await response.json();
+    console.log("Fetched Tables Data:", data);
+    if (Array.isArray(data)) {
       setTables(data);
-    } catch (err) {
-      console.error("Error fetching tables:", err);
+    } else if (data && typeof data === 'object') {
+      setTables([data]); 
+    } else {
+      setTables([]); 
     }
-  };
-
+  } catch (error) {
+    console.error("Error fetching tables:", error);
+    setTables([]); 
+  }
+};
   
 
   // 3. Handle Remove Table from DB
@@ -165,12 +461,12 @@ const [newTable, setNewTable] = useState({
   };
 
   // --- STAFF MANAGEMENT STATE ---
-  const [showStaffForm, setShowStaffForm] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('');
-  const [staffForm, setStaffForm] = useState({
-    fullName: '', contactNumber: '', email: '', address: '', salary: '', joiningDate: ''
-  });
 
+const [staffForm, setStaffForm] = useState({
+  fullName: '', contactNumber: '', email: '', 
+  password: '', salary: '', govtId: '', 
+  address: '', joiningDate: ''
+});
   // --- MENU FORM STATE ---
  const [newItem, setNewItem] = useState({ 
   itemName: '', 
@@ -188,7 +484,7 @@ const [newTable, setNewTable] = useState({
     fssaiLicenseNumber: '', gstNumber: '',
     accountHolderName: '', accountNumber: '', ifscCode: '', upiId: '',
     hasHomeDelivery: false, hasTakeaway: false, hasDineIn: false,
-    cafeImage: null,
+    cafeImages: [],
     cafeLicense: null,
     district: '',
     country: '',
@@ -207,9 +503,31 @@ const [newTable, setNewTable] = useState({
 
   // --- STYLES OBJECT ---
   const styles = {
+    iconOverlay: {
+    position: 'absolute',
+    top: '10px',
+    right: '10px',
+    display: 'flex',
+    gap: '8px',
+    zIndex: 10,
+  },
+  miniBtn: (type) => ({
+    backgroundColor: type === 'edit' ? '#fff' : '#ff4d4d',
+    color: type === 'edit' ? colors.coffee : '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    width: '32px',
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+    transition: '0.2s transform',
+  }),
     container: { display: 'flex', minHeight: '100vh', backgroundColor: colors.cream, color: colors.coffee, fontFamily: '"Playfair Display", serif' },
-    sidebar: { width: '280px', backgroundColor: colors.latte, height: '100vh', position: 'fixed', left: 0, top: 0, boxShadow: '4px 0 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', zIndex: 100 },
-    logoArea: { padding: '40px', borderBottom: '1px solid rgba(0,0,0,0.05)', fontSize: '24px', fontWeight: 'bold' },
+    sidebar: { width: '280px', backgroundColor: colors.latte, height: '100vh', position: 'fixed', left: 0, top: 0, boxShadow: '4px 0 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', zIndex: 100, },
+    logoArea: { padding: '10px 30px 20px 30px', borderBottom: '1px solid rgba(0,0,0,0.05)', fontSize: '24px', fontWeight: 'bold' },
     nav: { marginTop: '20px', flex: 1 },
     main: { marginLeft: '280px', flex: 1, padding: '60px', overflowY: 'auto' },
     card: { backgroundColor: colors.glass, padding: '30px', borderRadius: '24px', border: `1px solid ${colors.white}`, boxShadow: '0 10px 30px rgba(0,0,0,0.03)' },
@@ -231,21 +549,55 @@ const [newTable, setNewTable] = useState({
   };
 
   // --- TABLE HANDLERS ---
-  const handleTableImage = (e) => {
-    const file = e.target.files[0];
-    if (file) {
+
+const handleMultipleCafeFiles = (e) => {
+  const files = Array.from(e.target.files);
+  const readers = files.map(file => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => setNewTable({ ...newTable, image: reader.result });
+      reader.onloadend = () => resolve(reader.result);
       reader.readAsDataURL(file);
-    }
-  };
+    });
+  });
+
+  Promise.all(readers).then(results => {
+    setRegForm(prev => ({
+      ...prev,
+      cafeImages: [...(prev.cafeImages || []), ...results] 
+    }));
+  });
+};
+
+const handleMultipleTableImages = (e) => {
+  const files = Array.from(e.target.files);
+  const readers = files.map(file => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+  });
+  Promise.all(readers).then(results => {
+    setNewTable(prev => ({
+      ...prev,
+      images: [...(prev.images || []), ...results]
+    }));
+  });
+};
 
 
   const fetchCafes = async () => {
-    const response = await fetch('http://localhost:8080/api/cafes/all');
-    const data = await response.json();
-    setCafes(data);
+  try {
+    const response = await axios.get('http://localhost:8080/api/cafes/all');
+    setCafes(response.data);
+  } catch (error) {
+    console.error("Error fetching cafes:", error);
+  }
 };
+
+useEffect(() => {
+    fetchCafes();
+}, []);
 
 
   const OrdersManagement = () => (
@@ -311,26 +663,10 @@ const BookingsManagement = () => (
       [name]: type === 'checkbox' ? checked : value
     }));
   };
-const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    const { name } = e.target;
 
-    if (file) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            // This converts the image to a long string
-            setRegForm(prev => ({
-                ...prev,
-                [name]: reader.result 
-            }));
-        };
-        reader.readAsDataURL(file);
-    }
-};
   const handleRegistration = async (e) => {
     e.preventDefault();
     
-    // Switch between Register and Update based on isEditing state
     const url = isEditing 
         ? `http://localhost:8080/api/cafes/update/${regForm.id}` 
         : 'http://localhost:8080/api/cafes/register';
@@ -347,7 +683,7 @@ const handleFileChange = (e) => {
         if (response.ok) {
             alert(isEditing ? "Cafe Updated Successfully!" : "Business Registered Successfully!");
             setIsEditing(false); // Reset mode
-            setActiveSection('my-cafes'); //
+            setActiveSection('my-cafes'); 
         } else {
             const errorData = await response.text();
             alert("Action failed: " + errorData);
@@ -362,17 +698,24 @@ const handleFileChange = (e) => {
   // --- REFINED MENU HANDLERS ---
 
   // 1. Fetch menu from DB
-  const fetchMenuItems = async () => {
-    try {
-      const res = await fetch('http://localhost:8080/api/cafes/menu/all');
-      if (res.ok) {
-        const data = await res.json();
-        setMenuItems(data);
-      }
-    } catch (error) {
-      console.error("Error fetching menu:", error);
-    }
-  };
+  const fetchMenuItems = async (cafeId) => {
+  if (!cafeId) return; 
+  try {
+    const response = await axios.get(`http://localhost:8080/api/menu/cafe/${cafeId}`);
+    setMenuItems(response.data);
+  } catch (error) {
+    console.error("Error fetching menu items:", error);
+  }
+};
+
+useEffect(() => {
+  if (selectedCafe && selectedCafe.id) {
+    console.log("Fetching menu for Cafe ID:", selectedCafe.id);
+    fetchMenuItems(selectedCafe.id);
+  } else {
+    setMenuItems([]);
+  }
+}, [selectedCafe]);
 
   // 2. Fetch items when the section becomes active
   useEffect(() => {
@@ -383,70 +726,217 @@ const handleFileChange = (e) => {
 
   // 3. Handle Image Upload & Preview
   const handleMenuImage = (e) => {
-    const file = e.target.files[0];
-    if (file) {
+  const files = Array.from(e.target.files);
+  
+  const readers = files.map(file => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewItem(prev => ({ ...prev, photo: reader.result }));
-      };
+      reader.onloadend = () => resolve(reader.result);
       reader.readAsDataURL(file);
+    });
+  });
+
+  Promise.all(readers).then(results => {
+    // We update 'photos' (plural) to match your new List<String> in Java
+    setNewItem({ ...newItem, photos: results });
+  });
+};
+
+  // 4. Save to Database - UPDATED
+const handleAddMenu = async (e) => {
+  e.preventDefault();
+  
+  if (!selectedCafe?.id) {
+    alert("Please select a cafe first!");
+    return;
+  }
+
+  try {
+    // 1. Prepare the data matching your MenuItem entity
+    const menuData = {
+      itemName: newItem.itemName,
+      price: newItem.price,
+      description: newItem.description,
+      category: newItem.category,
+      photos: newItem.photos // Array of base64 strings for your @ElementCollection
+    };
+
+    // 2. Call the specific MenuItemController endpoint with the cafeId in the URL
+    const response = await axios.post(
+      `http://localhost:8080/api/menu/add/${selectedCafe.id}`, 
+      menuData
+    );
+
+    setMenuItems([...menuItems, response.data]);
+    
+    // 3. Reset form
+    setNewItem({ itemName: '', price: '', description: '', category: '', photos: [] });
+    alert("Item added successfully!");
+  } catch (error) {
+    console.error("Error saving menu:", error);
+    alert("Failed to save menu item. Check console for details.");
+  }
+};
+
+
+// 5. Delete from Database - UPDATED
+const handleDeleteMenu = async (id) => {
+  if (window.confirm("Are you sure you want to delete this item?")) {
+    try {
+      // Point to the correct DELETE endpoint
+      const response = await fetch(`http://localhost:8080/api/menu/${id}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        setMenuItems(prev => prev.filter(item => item.id !== id));
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
     }
+  }
+};
+
+
+//--Image carousel--
+const ImageCarousel = ({ images }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (!images || images.length === 0) {
+    return <div style={{ height: '200px', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>No Images</div>;
+  }
+
+  const nextSlide = (e) => {
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
-  // 4. Save to Database
-  const handleAddMenu = async (e) => {
-    e.preventDefault();
+  const prevSlide = (e) => {
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '200px', overflow: 'hidden', borderRadius: '12px' }}>
+      {/* The Image */}
+      <img 
+        src={images[currentIndex]} 
+        alt="Preview" 
+        style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'all 0.5s ease' }} 
+      />
+
+      {/* Navigation Buttons (Only show if more than 1 image) */}
+      {images.length > 1 && (
+        <>
+          <button onClick={prevSlide} style={carouselButtonStyle.left}>❮</button>
+          <button onClick={nextSlide} style={carouselButtonStyle.right}>❯</button>
+          
+          {/* Dots Indicator */}
+          <div style={{ position: 'absolute', bottom: '10px', width: '100%', display: 'flex', justifyContent: 'center', gap: '5px' }}>
+            {images.map((_, i) => (
+              <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: i === currentIndex ? '#fff' : 'rgba(255,255,255,0.5)' }} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+const carouselButtonStyle = {
+  left: { position: 'absolute', top: '50%', left: '10px', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.3)', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer' },
+  right: { position: 'absolute', top: '50%', right: '10px', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.3)', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer' }
+};
+
+  //--STAFF HANDLERS--
+  
+const handleStaffFormChange = (e) => {
+  setStaffFormData({ ...staffFormData, [e.target.name]: e.target.value });
+};
+useEffect(() => {
+  if (activeSection === 'staff' && selectedCafe?.id) {
+    fetch(`http://localhost:8080/api/staff/cafe/${selectedCafe.id}`)
+      .then(res => res.json())
+      .then(data => setStaffList(data))
+      .catch(err => console.log("Error fetching staff:", err));
+  }
+}, [activeSection, selectedCafe]);
+const handleAddStaff = async (e) => {
+  e.preventDefault();
+
+  // 1. Validation: Stop the process if cafeId is missing
+  const currentCafeId = selectedCafe?.id; 
+  if (!currentCafeId) {
+    alert("Error: No cafe selected. Please select a cafe first.");
+    return;
+  }
+
+  // 2. Use FormData because your backend needs to receive a File (Multipart)
+  const data = new FormData();
+
+  // 3. Append all text fields from your staffFormData
+  Object.keys(staffFormData).forEach(key => {
+    if (key !== 'govtProof') {
+      data.append(key, staffFormData[key]);
+    }
+  });
+
+  // 4. Append the specific fields required by the backend
+  data.append('role', selectedRole);
+  data.append('cafeId', currentCafeId);
+
+  // 5. Append the file if it exists
+  if (staffFormData.govtProof) {
+    data.append('govtProof', staffFormData.govtProof);
+  }
+
+  try {
+    const response = await fetch('http://localhost:8080/api/staff/register', {
+      method: 'POST',
+      // IMPORTANT: Do NOT set 'Content-Type' header when sending FormData
+      // The browser will automatically set it to 'multipart/form-data' with the correct boundary
+      body: data, 
+    });
+
+    if (response.ok) {
+      const newStaff = await response.json();
+      setStaffList([...staffList, newStaff]);
+      setShowStaffForm(false);
+      alert(`${selectedRole} onboarded successfully!`);
+      
+      // Reset form data after success
+      setStaffFormData({}); 
+    } else {
+      const errorText = await response.text();
+      alert("Registration failed: " + errorText);
+    }
+  } catch (error) {
+    console.error("Error onboarding staff:", error);
+    alert("Network error. Check if backend is running.");
+  }
+};
+
+const handleRevokeStaff = async (staffId) => {
+  // Confirmation dialog to prevent accidental clicks
+  if (window.confirm("Are you sure you want to revoke access for this staff member? This action cannot be undone.")) {
     try {
-      const response = await fetch('http://localhost:8080/api/cafes/menu/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newItem)
+      const response = await fetch(`http://localhost:8080/api/staff/${staffId}`, {
+        method: 'DELETE',
       });
 
       if (response.ok) {
-        alert("Item added successfully!");
-        setNewItem({ itemName: '', price: '', description: '', photo: null });
-        fetchMenuItems(); // Refresh the grid
+        // Update the local state to remove the revoked staff member
+        setStaffList(prevList => prevList.filter(staff => staff.id !== staffId));
+        alert("Staff access revoked successfully.");
+      } else {
+        const errorMsg = await response.text();
+        alert("Failed to revoke access: " + errorMsg);
       }
     } catch (error) {
-      console.error("Error saving menu item:", error);
+      console.error("Error revoking staff:", error);
+      alert("Network error. Please check your backend connection.");
     }
-  };
-
-  // 5. Delete from Database
-  const handleDeleteMenu = async (id) => {
-    if (window.confirm("Are you sure you want to delete this item?")) {
-      try {
-        const response = await fetch(`http://localhost:8080/api/cafes/menu/delete/${id}`, {
-          method: 'DELETE'
-        });
-        if (response.ok) {
-          setMenuItems(prev => prev.filter(item => item.id !== id));
-        }
-      } catch (error) {
-        console.error("Delete error:", error);
-      }
-    }
-  };
-  // --- STAFF HANDLERS ---
-  const handleStaffFormChange = (e) => {
-    setStaffForm({ ...staffForm, [e.target.name]: e.target.value });
-  };
-
-  const handleAddStaff = (e) => {
-    e.preventDefault();
-    const newStaff = { ...staffForm, role: selectedRole, id: Date.now() };
-    setStaffList([...staffList, newStaff]);
-    setShowStaffForm(false);
-    setStaffForm({ fullName: '', contactNumber: '', email: '', address: '', salary: '', joiningDate: '' });
-  };
-
-  const handleRevokeStaff = (id) => {
-    if(window.confirm("Are you sure you want to revoke this staff's access?")) {
-        setStaffList(staffList.filter(s => s.id !== id));
-    }
-  };
-
+  }
+};
   const SidebarItem = ({ id, label, icon }) => (
     <div 
       onClick={() => { setActiveSection(id); setShowStaffForm(false); setShowTableForm(false); }}
@@ -461,6 +951,7 @@ const handleFileChange = (e) => {
       <span style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '2px' }}>{label}</span>
     </div>
   );
+  
 
   return (
     <div style={styles.container}>
@@ -482,6 +973,29 @@ const handleFileChange = (e) => {
     <SidebarItem id="staff" label="Staff" icon={<Users size={18} />} />
     <SidebarItem id="orders" label="Orders" icon={<ShoppingBag size={18} />} />
     <SidebarItem id="bookings" label="Table Bookings" icon={<CalendarCheck size={18} />} />
+    <div 
+  onClick={handleLogout}
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    gap: '15px',
+    padding: '18px 30px',
+    cursor: 'pointer',
+    marginTop: 'auto', // This pushes the logout to the bottom
+    color: '#4c3c34',
+    opacity: 0.7,
+    transition: '0.3s',
+    borderTop: '1px solid rgba(0,0,0,0.05)'
+  }}
+  onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+  onMouseLeave={(e) => e.currentTarget.style.opacity = 0.7}
+>
+  
+  <LogOut size={20} />
+  <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+    Logout
+  </span>
+</div>
 </nav>
 
   <button 
@@ -509,19 +1023,36 @@ const handleFileChange = (e) => {
         
         {activeSection === 'dashboard' && (
           <div>
-            <div style={styles.headerLabel}>Overview</div>
-            <h1 style={{ fontSize: '48px', margin: '0 0 40px 0' }}>Analytics Dashboard</h1>
+            
+            
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px', marginBottom: '40px' }}>
               {[
                 { label: 'Total Orders', val: '128', icon: '📦' },
                 { label: 'Booked Tables', val: tables.length, icon: '🪑' },
                 { label: 'Revenue', val: '₹42,500', icon: '💰' }
               ].map((stat, i) => (
-                <div key={i} style={styles.card}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 'bold', opacity: 0.5 }}>{stat.label}</span>
-                    <span style={{ fontSize: '24px' }}>{stat.icon}</span>
-                  </div>
+                <div key={i} style={{ 
+                  backgroundColor: '#fff', 
+                  padding: '30px', 
+                  borderRadius: '15px', 
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Label Style */}
+        <span style={{ 
+          fontSize: '14px', 
+          fontWeight: '700', 
+          textTransform: 'uppercase', 
+          letterSpacing: '1px', 
+          color: '#8c7e74'
+        }}>
+          {stat.label}
+        </span>
+        <span style={{ fontSize: '24px' }}>{stat.icon}</span>
+      </div>
                   <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{stat.val}</div>
                 </div>
               ))}
@@ -551,7 +1082,16 @@ const handleFileChange = (e) => {
             </div>
           </div>
         )}
+        {view === 'register-cafe' && (
+        <RegisterCafeForm onSubmit={handleRegisterCafe} />
+      )}
 
+      {view === 'staff' && (
+        <StaffSignup 
+           cafeId={selectedCafe?.id} // Now this won't be undefined!
+           onBack={() => setView('dashboard')} 
+        />
+      )}
         {activeSection === 'orders' && <OrdersManagement />}
         {activeSection === 'bookings' && <BookingsManagement />}
 
@@ -668,14 +1208,27 @@ const handleFileChange = (e) => {
     paddingTop: '20px' 
   }}>
     <div>
-      <label style={{ fontSize: '10px', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>CAFE PHOTO</label>
-      <input type="file" accept="image/*" name="cafeImage" onChange={handleFileChange} style={{ fontSize: '12px', width: '100%' }} />
-      {regForm.cafeImage && <img src={regForm.cafeImage} alt="Cafe Preview" style={{ width: '100px', height: '60px', marginTop: '10px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #ddd' }} />}
+      <label style={{ fontSize: '10px', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>CAFE PHOTOS</label>
+      <input 
+    type="file" 
+    multiple
+    onChange={handleMultipleCafeFiles} 
+    style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px' }} 
+  />
+      {regForm.cafeImages?.map((img, index) => (
+      <img key={index} src={img} alt="Preview" style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} />
+    ))}
     </div>
 
     <div>
       <label style={{ fontSize: '10px', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>UPLOAD LICENSE (PDF/IMG)</label>
-      <input type="file" accept="image/*,.pdf" name="cafeLicense" onChange={handleFileChange} style={{ fontSize: '12px', width: '100%' }} />
+      <input 
+  type="file" 
+  multiple // Added this for multiple images
+  onChange={handleMultipleCafeFiles} // Use the new name we created
+  accept="image/*"
+  style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px' }} 
+/>
       {regForm.cafeLicense && <p style={{ fontSize: '10px', color: '#2ecc71', marginTop: '8px', fontWeight: '600' }}>✓ Document attached</p>}
     </div>
   </div>
@@ -722,8 +1275,8 @@ const handleFileChange = (e) => {
       
       <button 
         onClick={() => {
-          setIsEditing(false); // Reset editing mode
-          setRegForm({});      // Clear the form for a new entry
+          setIsEditing(false); 
+          setRegForm({});      
           setActiveSection('register');
         }}
         style={{ 
@@ -756,17 +1309,17 @@ const handleFileChange = (e) => {
         // Highlights the card if it's the currently selected cafe
         border: selectedCafe?.id === cafe.id ? `2px solid #4c3c34` : '1px solid #eee' 
       }}
+      onClick={() => {
+      setSelectedCafe(cafe); 
+      setActiveSection('menu'); 
+    }}
     >
       <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', marginBottom: '20px' }}>
         
         {/* Cafe Image Container */}
-        <div style={{ width: '100px', height: '100px', backgroundColor: '#fdfbf9', borderRadius: '12px', overflow: 'hidden', border: '1px solid #f4eee8', flexShrink: 0 }}>
-          {cafe.cafeImage ? (
-            <img src={cafe.cafeImage} alt="Cafe" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '30px' }}>☕</div>
-          )}
-        </div>
+        <div style={{ width: '150px', height: '100px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #f4eee8', flexShrink: 0 }}>
+  <SmoothScrollSlider images={cafe.cafeImages} />
+</div>
         
         {/* Text Details */}
         <div style={{ flex: 1 }}>
@@ -803,10 +1356,11 @@ const handleFileChange = (e) => {
       }}>
         {/* MANAGE MENU BUTTON */}
         <button 
-          onClick={() => {
-            setSelectedCafe(cafe); // Logic: Store WHICH cafe we are editing
-            setNewItem({ itemName: '', price: '', category: '', description: '', photo: null }); // Logic: Reset form
-            setActiveSection('menu'); // Logic: Go to menu section
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedCafe(cafe); 
+            setNewItem({ itemName: '', price: '', category: '', description: '', photo: null }); 
+            setActiveSection('menu'); 
           }}
           style={{
             flex: 1,
@@ -832,10 +1386,20 @@ const handleFileChange = (e) => {
 
         {/* MANAGE TABLES BUTTON */}
         <button 
-          onClick={() => {
-            setSelectedCafe(cafe); // Logic: Store WHICH cafe we are editing
-            setNewTable({ tableNumber: '', capacity: '', price: '', status: 'Available', image: null }); // Logic: Reset form
-            setActiveSection('tables'); // Logic: Go to tables section
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedCafe(cafe);
+            setNewTable({ 
+            tableNumber: '', 
+            capacity: '', 
+            price: '', 
+            status: 'Available', 
+            images: [],
+            cafeId: cafe.id 
+          });
+            fetchTables(cafe.id);
+            setActiveSection('tables');
+            setView('dashboard'); 
           }}
           style={{
             flex: 1,
@@ -858,6 +1422,46 @@ const handleFileChange = (e) => {
         >
           <TableIcon size={18} /> Manage Tables
         </button>
+
+        {/* MANAGE STAFF BUTTON */}
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedCafe(cafe); 
+            setNewTable({ 
+            tableNumber: '', 
+            capacity: '', 
+            price: '', 
+            status: 'Available', 
+            image: null,
+            cafeId: cafe.id
+          });
+            
+            setSelectedCafe(cafe);  
+            setActiveSection('staff');
+            setShowStaffForm(false);
+          }}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '10px',
+            backgroundColor: '#fdfbf9',
+            border: '1px solid #eaddd0',
+            borderRadius: '10px',
+            color: '#4c3c34',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'background 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f4eee8'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fdfbf9'}
+        >
+          <Users size={18} /> Manage Staff
+        </button>
       </div>
     </div>
   ))
@@ -878,7 +1482,6 @@ const handleFileChange = (e) => {
 
         {activeSection === 'menu' && (
   <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-    {/* Dynamic Title: Shows which cafe you are managing */}
     <h2 style={{ fontSize: '32px', marginBottom: '30px' }}>
       Manage Menu {selectedCafe ? `for ${selectedCafe.cafeName}` : ''}
     </h2>
@@ -894,12 +1497,10 @@ const handleFileChange = (e) => {
             onChange={(e) => setNewItem({...newItem, itemName: e.target.value})} 
           />
           
-          {/* ADD THIS SELECT BLOCK TO FIX THE ERROR */}
+          {/* CATEGORY SELECT - Fixed to ensure value maps to 'category' field */}
           <select
             style={styles.input}
             required
-            name="category"
-            // The || "" ensures it's never null, fixing the React error
             value={newItem.category || ""} 
             onChange={(e) => setNewItem({...newItem, category: e.target.value})}
           >
@@ -927,92 +1528,300 @@ const handleFileChange = (e) => {
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
-          <div style={{ width: '100%', height: '150px', border: `2px dashed ${colors.latte}`, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            {newItem.photo ? <img src={newItem.photo} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ opacity: 0.5 }}>Image Preview</span>}
+          {/* MULTIPLE IMAGE PREVIEW */}
+          <div style={{ 
+            width: '100%', 
+            minHeight: '150px', 
+            border: `2px dashed ${colors.latte}`, 
+            borderRadius: '12px', 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            gap: '10px', 
+            padding: '10px',
+            justifyContent: 'center',
+            overflowY: 'auto' 
+          }}>
+            {newItem.photos && newItem.photos.length > 0 ? (
+              newItem.photos.map((photo, index) => (
+                <img key={index} src={photo} alt="Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
+              ))
+            ) : (
+              <span style={{ opacity: 0.5, alignSelf: 'center' }}>Image Previews</span>
+            )}
           </div>
-          <input type="file" accept="image/*" onChange={handleMenuImage} style={{ fontSize: '12px' }} />
+
+          {/* MULTIPLE FILE INPUT */}
+          <input 
+            type="file" 
+            accept="image/*" 
+            multiple 
+            onChange={handleMenuImage} 
+            style={{ fontSize: '12px' }} 
+          />
+          <p style={{ fontSize: '11px', color: '#888', margin: 0 }}>You can select multiple photos</p>
+          
           <button type="submit" style={styles.buttonPrimary}>Save to Menu</button>
         </div>
       </form>
     </div>
 
-    <div style={styles.menuGrid}>
-      {menuItems.map((item) => (
-        <div key={item.id} style={styles.menuCard}>
-          {/* Delete button calls handleDeleteMenu (API DELETE) */}
-          <button onClick={() => handleDeleteMenu(item.id)} style={styles.deleteBtn}>✕</button>
-          {item.photo && <img src={item.photo} alt={item.itemName} style={styles.itemImage} />}
-          <div style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px' }}>{item.itemName}</h3>
-              <span style={{ fontWeight: 'bold', color: colors.accent }}>₹{item.price}</span>
+    {/* MENU DISPLAY GRID */}
+<div style={styles.menuGrid}>
+  {menuItems.map((item) => {
+    // Local index for the carousel
+    const currentIndex = item.activeIndex || 0;
+
+    return (
+      <div key={item.id} style={styles.menuCard}>
+        {/* AESTHETIC EDIT/DELETE OVERLAY */}
+  <div style={styles.iconOverlay}>
+    <button 
+      onClick={(e) => { e.stopPropagation(); handleEditItem(item); }} 
+      style={styles.miniBtn('edit')}
+      onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+      onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+    >
+      <Pencil size={16} />
+    </button>
+    <button 
+      onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} 
+      style={styles.miniBtn('delete')}
+      onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+      onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+    >
+      <Trash2 size={16} />
+    </button>
+  </div>
+        <button onClick={() => handleDeleteMenu(item.id)} style={styles.deleteBtn}>✕</button>
+        
+        {/* CAROUSEL CONTAINER */}
+        <div style={{ 
+          height: '200px', 
+          backgroundColor: '#eee', 
+          position: 'relative', 
+          overflow: 'hidden',
+          borderRadius: '12px 12px 0 0' 
+        }}>
+          {item.photos && item.photos.length > 0 ? (
+            <>
+              {/* SLIDING TRACK */}
+              <div style={{ 
+                display: 'flex', 
+                height: '100%',
+                transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)', 
+                transform: `translateX(-${currentIndex * 100}%)` 
+              }}>
+                {item.photos.map((photo, i) => (
+                  <img 
+                    key={i} 
+                    src={photo} 
+                    alt={`${item.itemName} ${i}`} 
+                    style={{ minWidth: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                ))}
+              </div>
+
+              {/* ARROWS - Only show if more than 1 photo exists */}
+              {item.photos.length > 1 && (
+                <>
+                  <button 
+                    onClick={(e) => { e.preventDefault(); handlePrevImage(item.id); }}
+                    style={{ ...carouselArrowStyle, left: '10px' }}
+                  > ‹ </button>
+                  <button 
+                    onClick={(e) => { e.preventDefault(); handleNextImage(item.id); }}
+                    style={{ ...carouselArrowStyle, right: '10px' }}
+                  > › </button>
+                  
+                  {/* INDICATOR DOTS */}
+                  <div style={{ position: 'absolute', bottom: '10px', width: '100%', display: 'flex', justifyContent: 'center', gap: '5px' }}>
+                    {item.photos.map((_, i) => (
+                      <div key={i} style={{
+                        width: '6px', height: '6px', borderRadius: '50%',
+                        backgroundColor: i === currentIndex ? '#fff' : 'rgba(255,255,255,0.5)',
+                        transition: '0.3s'
+                      }} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+              No Image Available
             </div>
-            <p style={{ fontSize: '13px', opacity: 0.7, margin: 0 }}>{item.description}</p>
-          </div>
+          )}
         </div>
-      ))}
-    </div>
+
+        <div style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+            <h3 style={{ margin: 0, fontSize: '18px' }}>{item.itemName}</h3>
+            <span style={{ fontWeight: 'bold', color: colors.accent }}>₹{item.price}</span>
+          </div>
+          <p style={{ fontSize: '12px', color: colors.coffee, fontWeight: 'bold', marginBottom: '10px' }}>{item.category}</p>
+          <p style={{ fontSize: '13px', opacity: 0.7, margin: 0 }}>{item.description}</p>
+        </div>
+      </div>
+    );
+  })}
+</div>
   </div>
 )}
 
         {activeSection === 'staff' && (
-          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            <h2 style={{ fontSize: '32px', marginBottom: '30px' }}>Staff Management</h2>
-            {!showStaffForm ? (
-                <div style={{ display: 'flex', gap: '20px' }}>
-                    <div style={styles.staffRoleBox} onClick={() => { setSelectedRole('Chef'); setShowStaffForm(true); }}>
-                        <div style={{ fontSize: '40px' }}>👨‍🍳</div>
-                        <h4 style={{ letterSpacing: '2px' }}>CHEF</h4>
-                    </div>
-                    <div style={styles.staffRoleBox} onClick={() => { setSelectedRole('Waiter'); setShowStaffForm(true); }}>
-                        <div style={{ fontSize: '40px' }}>🤵</div>
-                        <h4 style={{ letterSpacing: '2px' }}>WAITER</h4>
-                    </div>
-                </div>
-            ) : (
-                <div style={{ ...styles.card, backgroundColor: colors.white }}>
-                    <h3 style={{ marginBottom: '20px', textTransform: 'uppercase', fontSize: '14px' }}>Onboarding {selectedRole}</h3>
-                    <form onSubmit={handleAddStaff} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                        <input style={styles.input} required name="fullName" placeholder="Full Name" onChange={handleStaffFormChange} />
-                        <input style={styles.input} required name="contactNumber" placeholder="Contact Number" onChange={handleStaffFormChange} />
-                        <input style={styles.input} required name="email" type="email" placeholder="Email" onChange={handleStaffFormChange} />
-                        <input style={styles.input} required name="salary" placeholder="Salary (₹)" onChange={handleStaffFormChange} />
-                        <input style={{ ...styles.input, gridColumn: 'span 2' }} required name="address" placeholder="Residential Address" onChange={handleStaffFormChange} />
-                        <div style={{ gridColumn: 'span 2' }}>
-                            <label style={{ fontSize: '10px', fontWeight: 'bold' }}>JOINING DATE</label>
-                            <input style={styles.input} required name="joiningDate" type="date" onChange={handleStaffFormChange} />
-                        </div>
-                        <button type="submit" style={styles.buttonPrimary}>Add {selectedRole}</button>
-                        <button type="button" onClick={() => setShowStaffForm(false)} style={{ background: 'none', border: 'none', color: colors.accent, fontWeight: 'bold', cursor: 'pointer' }}>Cancel</button>
-                    </form>
-                </div>
-            )}
+  <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <h2 style={{ fontSize: '32px', marginBottom: '30px', color: '#4c3c34', fontFamily: "'Playfair Display', serif", textAlign: 'center' }}>
+      Staff Management
+    </h2>
+    
+    {showStaffForm ? (
+      /* VIEW 1: THE SIGNUP FORM */
+      <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', animation: 'fadeIn 0.3s ease-in' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '25px', gap: '15px' }}>
+          <button 
+            onClick={() => { setShowStaffForm(false); setSelectedRole(""); }}
+            style={{ backgroundColor: '#f5f0eb', border: 'none', padding: '10px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#4c3c34' }}
+          >
+            ← Back to Selection
+          </button>
+          <h3 style={{ margin: 0, color: '#4c3c34' }}>Registering: {selectedRole}</h3>
+        </div>
+        <StaffSignup 
+          onBack={() => setShowStaffForm(false)} 
+          cafeId={selectedCafe?.id} 
+          role={selectedRole}
+          onSuccess={(newStaff) => {
+            setStaffList([...staffList, newStaff]);
+            setShowStaffForm(false);
+            setSelectedRole("");
+          }}
+        />
+      </div>
+    ) : showStaffList ? (
+      /* VIEW 2: PAGINATED STAFF LIST */
+      <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+          <button 
+            onClick={() => setShowStaffList(false)}
+            style={{ backgroundColor: '#f5f0eb', border: 'none', padding: '10px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#4c3c34' }}
+          >
+            ← Back to Selection
+          </button>
+          <h3 style={{ margin: 0, color: '#4c3c34' }}>Registered Staff Inventory</h3>
+        </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginTop: '40px' }}>
-                {staffList.map((staff) => (
-                    <div key={staff.id} style={styles.staffCard}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <h3 style={{ margin: 0, fontSize: '18px' }}>{staff.fullName}</h3>
-                            <span style={{ fontSize: '10px', fontWeight: 'bold', backgroundColor: colors.latte, padding: '4px 8px', borderRadius: '4px' }}>{staff.role}</span>
-                        </div>
-                        <div style={{ fontSize: '13px', marginTop: '10px', opacity: 0.8 }}>
-                            <p style={{ margin: '4px 0' }}>📞 {staff.contactNumber}</p>
-                            <p style={{ margin: '4px 0' }}>✉️ {staff.email}</p>
-                            <p style={{ margin: '4px 0' }}>💰 Salary: ₹{staff.salary}</p>
-                            <p style={{ margin: '4px 0' }}>📅 Joined: {staff.joiningDate}</p>
-                        </div>
-                        <button onClick={() => handleRevokeStaff(staff.id)} style={styles.revokeBtn}>REVOKE ACCESS</button>
+        {staffList.length > 0 ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+              {staffList
+                  .slice((staffCurrentPage - 1) * staffPerPage, staffCurrentPage * staffPerPage)
+                  .map((staff) => (
+                    <div key={staff.id} style={{ border: '1px solid #eee', padding: '20px', borderRadius: '12px', position: 'relative', backgroundColor: '#fff' }}>
+                      <div style={{ position: 'absolute', top: '15px', right: '15px', fontSize: '24px' }}>
+                        {staff.role === 'Chef' ? '👨‍🍳' : '🤵'}
+                      </div>
+                      
+                      <h4 style={{ margin: '0 0 5px 0', color: '#4c3c34' }}>{staff.firstName} {staff.lastName}</h4>
+                      <span style={{ fontSize: '10px', fontWeight: 'bold', backgroundColor: '#f5f0eb', color: '#4c3c34', padding: '3px 8px', borderRadius: '4px' }}>
+                        {staff.role?.toUpperCase()}
+                      </span>
+
+                      <div style={{ marginTop: '15px', fontSize: '13px', color: '#666' }}>
+                        <p style={{ margin: '4px 0' }}>📧 {staff.email}</p>
+                        <p style={{ margin: '4px 0' }}>📞 {staff.phone}</p>
+                      </div>
+
+                      {/* THE REVOKE BUTTON */}
+                      <button 
+                        onClick={() => handleRevokeStaff(staff.id)}
+                        style={{
+                          marginTop: '15px',
+                          width: '100%',
+                          padding: '8px',
+                          borderRadius: '6px',
+                          border: '1px solid #e74c3c',
+                          backgroundColor: 'transparent',
+                          color: '#e74c3c',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#e74c3c';
+                          e.currentTarget.style.color = '#fff';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = '#e74c3c';
+                        }}
+                      >
+                        REVOKE ACCESS
+                      </button>
                     </div>
                 ))}
             </div>
-          </div>
+
+            {/* PAGINATION CONTROLS */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginTop: '30px' }}>
+              <button 
+                disabled={staffCurrentPage === 1}
+                onClick={() => setStaffCurrentPage(p => p - 1)}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #ddd', cursor: staffCurrentPage === 1 ? 'not-allowed' : 'pointer', backgroundColor: staffCurrentPage === 1 ? '#f9f9f9' : '#fff' }}
+              >
+                Previous
+              </button>
+              <span style={{ fontWeight: 'bold', color: '#4c3c34' }}>Page {staffCurrentPage}</span>
+              <button 
+                disabled={staffCurrentPage * staffPerPage >= staffList.length}
+                onClick={() => setStaffCurrentPage(p => p + 1)}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #ddd', cursor: staffCurrentPage * staffPerPage >= staffList.length ? 'not-allowed' : 'pointer', backgroundColor: staffCurrentPage * staffPerPage >= staffList.length ? '#f9f9f9' : '#fff' }}
+              >
+                Next
+              </button>
+            </div>
+          </>
+        ) : (
+          <p style={{ textAlign: 'center', color: '#8c7e74', fontStyle: 'italic' }}>No staff members registered yet.</p>
         )}
+      </div>
+    ) : (
+      /* VIEW 3: SELECTION BOXES (Default) */
+      <div style={{ textAlign: 'center' }}>
+        <p style={{ color: '#8c7e74', marginBottom: '30px' }}>Select a role to manage or add new staff</p>
+        <div style={{ display: 'flex', gap: '30px', justifyContent: 'center', marginBottom: '40px' }}>
+          {[
+            { role: 'Chef', emoji: '👨‍🍳', description: 'Kitchen & Menu Management' },
+            { role: 'Waiter', emoji: '🤵', description: 'Service & Table Management' },
+          ].map((item) => (
+            <div 
+              key={item.role}
+              onClick={() => { setSelectedRole(item.role); setShowStaffForm(true); }}
+              style={{ backgroundColor: '#fff', padding: '50px 30px', borderRadius: '20px', textAlign: 'center', cursor: 'pointer', width: '280px', transition: 'all 0.3s ease', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', border: '1px solid #eee' }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.borderColor = '#f39c12'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#eee'; }}
+            >
+              <div style={{ fontSize: '60px', marginBottom: '20px' }}>{item.emoji}</div>
+              <h3 style={{ letterSpacing: '1px', marginBottom: '10px', color: '#4c3c34' }}>{item.role}</h3>
+              <p style={{ fontSize: '14px', color: '#8c7e74', lineHeight: '1.5' }}>Click to register a new {item.role}</p>
+            </div>
+          ))}
+        </div>
+        <button 
+          onClick={() => setShowStaffList(true)}
+          style={{ background: 'none', border: 'none', color: '#8c7e74', textDecoration: 'underline', cursor: 'pointer', fontSize: '16px' }}
+        >
+          View Registered Staff List ({staffList.length})
+        </button>
+      </div>
+    )}
+  </div>
+)}
 
         {/* INTEGRATED TABLE MANAGEMENT SECTION */}
       {activeSection === 'tables' && (
   <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-      {/* Icon Heading */}
+      
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ backgroundColor: '#4c3c34', padding: '10px', borderRadius: '12px', display: 'flex' }}>
           <TableIcon size={28} color="#fff" />
@@ -1072,7 +1881,17 @@ const handleFileChange = (e) => {
                 </div>
               )}
               <label style={{ display: 'block', fontSize: '12px', marginBottom: '10px', color: colors.accent, fontWeight: 'bold' }}>UPLOAD TABLE IMAGE</label>
-              <input type="file" accept="image/*" onChange={handleTableImage} style={{ fontSize: '12px' }} />
+              <input 
+                type="file" 
+                multiple 
+                onChange={handleMultipleTableImages} 
+                style={{ fontSize: '12px' }} 
+              />
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+    {newTable.images?.map((img, index) => (
+      <img key={index} src={img} alt="Table Preview" style={{ width: '50px', height: '50px', borderRadius: '5px' }} />
+    ))}
+  </div>
             </div>
           </div>
 
@@ -1096,65 +1915,73 @@ const handleFileChange = (e) => {
     )}
 
     <div style={styles.tableGrid}>
-      {tables.length === 0 ? (
-        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px', opacity: 0.5 }}>
-          No tables in inventory. Click "+ Add New Table" to start.
-        </div>
-      ) : (
-        tables.map((table) => (
-          <div key={table.id} style={{ ...styles.menuCard, position: 'relative' }}>
-            {table.image ? (
-              <img src={table.image} alt={`Table ${table.tableNumber}`} style={styles.itemImage} />
-            ) : (
-              <div style={{ ...styles.itemImage, backgroundColor: colors.latte, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '40px' }}>🪑</span>
-              </div>
-            )}
-            
-            <div style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, color: colors.coffee }}>Table {table.tableNumber}</h3>
-                <span style={{ fontWeight: 'bold', color: colors.accent }}>₹{table.price}/hr</span>
-              </div>
-              <p style={{ fontSize: '14px', opacity: 0.7, margin: '10px 0' }}>Capacity: {table.capacity} Persons</p>
-              
-              {/* Display Description */}
-              {table.description && (
-                <p style={{ fontSize: '12px', color: '#666', fontStyle: 'italic', marginBottom: '10px' }}>
-                  {table.description}
-                </p>
-              )}
-
-              {/* Display Amenities as Tags */}
-              {table.amenities && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '15px' }}>
-                  {table.amenities.split(',').map((tag, idx) => (
-                    <span key={idx} style={{ fontSize: '10px', backgroundColor: '#f0f0f0', padding: '4px 8px', borderRadius: '4px', color: '#4c3c34' }}>
-                      {tag.trim()}
-                    </span>
-                  ))}
-                </div>
-              )}
-              
-              <div style={{ display: 'flex', gap: '10px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-                <button 
-                  onClick={() => { setNewTable(table); setShowTableForm(true); }}
-                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', backgroundColor: '#f39c12', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Pencil size={18} />
-                </button>
-                <button 
-                  onClick={() => handleRemoveTable(table.id)} 
-                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', backgroundColor: '#e74c3c', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))
-      )}
+  {(!tables || tables.length === 0) ? (
+    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px', opacity: 0.5 }}>
+      No tables in inventory. Click "+ Add New Table" to start.
     </div>
+  ) : (
+    tables.map((table) => (
+      <div key={table.id} style={{ ...styles.menuCard, position: 'relative', overflow: 'hidden' }}>
+        
+        {/* IMAGE SECTION */}
+        {table.images && table.images.length > 0 ? (
+          <ImageCarousel images={table.images} />
+        ) : (
+          <div style={{ ...styles.itemImage, backgroundColor: colors.latte, height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: '40px' }}>🪑</span>
+          </div>
+        )}
+        
+        {/* DETAILS SECTION */}
+        <div style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, color: colors.coffee }}>Table {table.tableNumber}</h3>
+            <span style={{ fontWeight: 'bold', color: colors.accent }}>₹{table.price}/hr</span>
+          </div>
+          
+          <p style={{ fontSize: '14px', opacity: 0.7, margin: '10px 0' }}>
+            Capacity: {table.capacity} Persons
+          </p>
+          
+          {table.description && (
+            <p style={{ fontSize: '12px', color: '#666', fontStyle: 'italic', marginBottom: '10px' }}>
+              {table.description}
+            </p>
+          )}
+
+          {table.amenities && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '15px' }}>
+              {table.amenities.split(',').map((tag, idx) => (
+                <span key={idx} style={{ fontSize: '10px', backgroundColor: '#f0f0f0', padding: '4px 8px', borderRadius: '4px', color: '#4c3c34' }}>
+                  {tag.trim()}
+                </span>
+              ))}
+            </div>
+          )}
+          
+          {/* ACTIONS SECTION */}
+          <div style={{ display: 'flex', gap: '10px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+            <button 
+              onClick={() => { 
+                setNewTable(table); 
+                setShowTableForm(true); 
+              }}
+              style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', backgroundColor: '#f39c12', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Pencil size={18} />
+            </button>
+            <button 
+              onClick={() => handleRemoveTable(table.id)} 
+              style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', backgroundColor: '#e74c3c', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
+    ))
+  )}
+</div>
   </div>
 )}
 
